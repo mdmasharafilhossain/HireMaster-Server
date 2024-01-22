@@ -18,7 +18,7 @@ app.use(express.json());
 
 
 
-const uri = "mongodb+srv://<username>:<password>@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority";
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -47,9 +47,9 @@ run().catch(console.dir);
 
 
 app.get('/',(req,res)=>{
-    res.send('Server Running Successfully');
+    res.send('HireMaster Server Running Successfully');
 });
 
 app.listen(port,()=>{
-    console.log(`Server Running at Port ${port}`)
+    console.log(`HireMaster Server Running at Port ${port}`)
 });
