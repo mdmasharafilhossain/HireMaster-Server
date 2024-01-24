@@ -37,12 +37,19 @@ async function run() {
 
 
     //  UserProfileCollection
+
+    app.post('/userProfile', async(req,res)=>{
+      const feedbacks = req.body;
+      const result = await UsersProfileCollection.insertOne(feedbacks);
+       res.send(result);
+    });
+
     app.get('/userProfile',async(req,res)=>{
       const result = await  UsersProfileCollection.find().toArray();
     res.send(result);
     });
 
-    
+
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
