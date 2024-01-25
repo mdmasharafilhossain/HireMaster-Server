@@ -33,6 +33,7 @@ async function run() {
     const UsersProfileCollection = client.db('HireMaster').collection('UsersProfile');
 
 
+    const jobCollection=client.db('HireMaster').collection('jobData')
 
 
 
@@ -48,6 +49,12 @@ async function run() {
       const result = await  UsersProfileCollection.find().toArray();
     res.send(result);
     });
+
+    app.post("/jobpost",async(req,res)=>{
+      const job=req.body
+      const result=await jobCollection.insertOne(job)
+      res.send(result)
+    })
 
 
     // Connect the client to the server	(optional starting in v4.7)
