@@ -77,7 +77,6 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-
     app.get("/staticjobpost", async (req, res) => {
       const cursor = staticCollection.find();
       const result = await cursor.toArray();
@@ -97,6 +96,27 @@ async function run() {
       console.log(email);
       const query = { hiring_manager_email: email };
       const result = await staticCollection.find(query).toArray();
+      res.send(result);
+    });
+    
+    app.get("/staticjobpost", async (req, res) => {
+      const { job_title, job_time, salaryRange } = req.query;
+      // console.log("Query parameters:", req.query);
+      const filter = {};
+
+      if (job_title) {
+        filter.job_title = { $regex: new RegExp(job_title, "i") };
+      }
+      if (job_time && job_time.length > 0) {
+        filter.job_time = { $in: job_time };
+      }
+      if (salaryRange) {
+        const [minSalary, maxSalary] = salaryRange.split("-").map(Number);
+        filter.salary = { $gte: minSalary, $lte: maxSalary };
+      }
+      console.log("Applied filters:", filter);
+      const cursor = staticCollection.find(filter);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
