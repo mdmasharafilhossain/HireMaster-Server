@@ -93,7 +93,13 @@ async function run() {
       console.log("Applied filters:", filter);
       const cursor = staticCollection.find(filter);
       const result = await cursor.toArray();
-      res.send(result);
+      if (result.length === 0) {
+        res
+          .status(200)
+          .json({ message: "No jobs found matching your criteria." });
+      } else {
+        res.send(result);
+      }
     });
 
     // Connect the client to the server	(optional starting in v4.7)
