@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -43,6 +43,14 @@ async function run() {
       const result = await UsersProfileCollection.find().toArray();
       res.send(result);
     });
+    app.get("/userProfile/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+      };
+      const result = await UsersProfileCollection.findOne(query);
+      res.send(result);
+    });
 
     app.post("/jobpost", async (req, res) => {
       const job = req.body;
@@ -69,12 +77,28 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    app.get("/staticjobpost/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await staticCollection.findOne(query);
+      res.send(result);
+    });
 
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-
-    // });
+    app.get("/staticjobpost/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { hiring_manager_email: email };
+      const result = await staticCollection.find(query).toArray();
+      res.send(result);
+    });
+    
     app.get("/staticjobpost", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
