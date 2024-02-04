@@ -25,6 +25,9 @@ async function run() {
     const UsersProfileCollection = client
       .db("HireMaster")
       .collection("UsersProfile");
+    const ManagersProfileCollection = client
+      .db("HireMaster")
+      .collection("ManagersProfile");
     const jobCollection = client.db("HireMaster").collection("jobData");
     const appliedJobCollection = client
       .db("HireMaster")
@@ -52,6 +55,40 @@ async function run() {
       res.send(result);
     });
 
+    // ---------Managers Profile Collection--------------
+    app.post("/managerProfile", async (req, res) => {
+      const newProfile = req.body;
+
+      const existingProfile = await ManagersProfileCollection.findOne({
+        email: newProfile.email,
+      });
+
+      if (existingProfile) {
+        return res.send({
+          message: "Already Exist, Update from profile.",
+          insertedId: null,
+        });
+      }
+
+      const result = await ManagersProfileCollection.insertOne(newProfile);
+      res.status(201).json({ insertedId: result.insertedId });
+    });
+
+    app.get("/managerProfile", async (req, res) => {
+      const result = await ManagersProfileCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/managerProfile/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+      };
+      const result = await ManagersProfileCollection.findOne(query);
+      res.send(result);
+    });
+
+    // ---------------Jobs Section-------------------
     app.post("/jobpost", async (req, res) => {
       const job = req.body;
       const result = await jobCollection.insertOne(job);
@@ -98,7 +135,7 @@ async function run() {
       const result = await staticCollection.find(query).toArray();
       res.send(result);
     });
-    
+
     app.get("/staticjobpost", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
