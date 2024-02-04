@@ -41,7 +41,9 @@ async function run() {
     });
 
     app.get('/userProfile', async (req, res) => {
-      const result = await UsersProfileCollection.find().toArray();
+      const email = req.query.email
+      const query = {email: email}
+      const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -78,6 +80,8 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     })
+
+  
 
 
     // Connect the client to the server	(optional starting in v4.7)
