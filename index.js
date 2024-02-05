@@ -59,6 +59,20 @@ async function run() {
       const result = await jobCollection.insertOne(job);
       res.send(result);
     });
+    app.get("/userProfile/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+      };
+      const result = await UsersProfileCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.post("/jobpost", async (req, res) => {
+      const job = req.body;
+      const result = await jobCollection.insertOne(job);
+      res.send(result);
+    });
 
     //Applied Jobs
     app.post("/users-appliedjobs", async (req, res) => {
@@ -130,7 +144,6 @@ async function run() {
 
     app.patch('/UsersProfile/:id', async (req, res) => {
       const item = req.body
-      console.log(item)
       const id = req.params.id
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
