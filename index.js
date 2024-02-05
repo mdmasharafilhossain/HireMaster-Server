@@ -77,11 +77,11 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    app.get("/staticjobpost", async (req, res) => {
-      const cursor = staticCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+    // app.get("/staticjobpost", async (req, res) => {
+    //   const cursor = staticCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -98,7 +98,7 @@ async function run() {
       const result = await staticCollection.find(query).toArray();
       res.send(result);
     });
-    
+
     app.get("/staticjobpost", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
@@ -114,13 +114,14 @@ async function run() {
         const [minSalary, maxSalary] = salaryRange.split("-").map(Number);
         filter.salary = { $gte: minSalary, $lte: maxSalary };
       }
-      console.log("Applied filters:", filter);
+      // console.log("Applied filters:", filter);
       const cursor = staticCollection.find(filter);
       const result = await cursor.toArray();
       if (result.length === 0) {
-        res
-          .status(200)
-          .json({ message: "No jobs found matching your criteria." });
+        res.status(200).json({
+          message:
+            "No jobs found matching your criteria. Please try with different criteria.",
+        });
       } else {
         res.send(result);
       }
