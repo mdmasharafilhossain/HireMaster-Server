@@ -40,7 +40,23 @@ async function run() {
     });
 
     app.get("/userProfile", async (req, res) => {
-      const result = await UsersProfileCollection.find().toArray();
+      const email = req.query.email
+      const query = {email: email}
+      const result = await UsersProfileCollection.find(query).toArray();
+      res.send(result);
+    });
+    // app.get("/userProfile/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = {
+    //     email: email,
+    //   };
+    //   const result = await UsersProfileCollection.findOne(query);
+    //   res.send(result);
+    // });
+
+    app.post("/jobpost", async (req, res) => {
+      const job = req.body;
+      const result = await jobCollection.insertOne(job);
       res.send(result);
     });
     app.get("/userProfile/:email", async (req, res) => {
@@ -98,7 +114,6 @@ async function run() {
       const result = await staticCollection.find(query).toArray();
       res.send(result);
     });
-
     app.get("/staticjobpost", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
@@ -126,6 +141,20 @@ async function run() {
         res.send(result);
       }
     });
+
+    app.patch('/UsersProfile/:id', async (req, res) => {
+      const item = req.body
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          UniversityName: item. UniversityName,
+          
+        }
+      }
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
