@@ -34,6 +34,12 @@ async function run() {
       .collection("AppliedJob");
     const staticCollection = client.db("HireMaster").collection("JobPost");
 
+    const hiringTalentCollection = client
+      .db("HireMaster")
+      .collection("HiringTalent");
+
+    const userCollection = client.db("HireMaster").collection("Users");
+
     //  UserProfileCollection
 
     app.post("/userProfile", async (req, res) => {
@@ -43,7 +49,23 @@ async function run() {
     });
 
     app.get("/userProfile", async (req, res) => {
-      const result = await UsersProfileCollection.find().toArray();
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await UsersProfileCollection.find(query).toArray();
+      res.send(result);
+    });
+    // app.get("/userProfile/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = {
+    //     email: email,
+    //   };
+    //   const result = await UsersProfileCollection.findOne(query);
+    //   res.send(result);
+    // });
+
+    app.post("/jobpost", async (req, res) => {
+      const job = req.body;
+      const result = await jobCollection.insertOne(job);
       res.send(result);
     });
     app.get("/userProfile/:email", async (req, res) => {
@@ -114,11 +136,11 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    app.get("/staticjobpost", async (req, res) => {
-      const cursor = staticCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+    // app.get("/staticjobpost", async (req, res) => {
+    //   const cursor = staticCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -151,16 +173,55 @@ async function run() {
         const [minSalary, maxSalary] = salaryRange.split("-").map(Number);
         filter.salary = { $gte: minSalary, $lte: maxSalary };
       }
-      console.log("Applied filters:", filter);
+      // console.log("Applied filters:", filter);
       const cursor = staticCollection.find(filter);
       const result = await cursor.toArray();
       if (result.length === 0) {
-        res
-          .status(200)
-          .json({ message: "No jobs found matching your criteria." });
+        res.status(200).json({
+          message:
+            "No jobs found matching your criteria. Please try with different criteria.",
+        });
       } else {
         res.send(result);
       }
+    });
+
+    app.patch("/UsersProfile/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          UniversityName: item.UniversityName,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "user already exists" });
+      }
+      res.send(await userCollection.insertOne(user));
+      // console.log(user);
+    });
+
+    app.post("/hiring-talents", async (req, res) => {
+      const hirer = req.body;
+      // console.log(hirer);
+      const result = await hiringTalentCollection.insertOne(hirer);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      res.json(await userCollection.find({}).toArray());
+    });
+    app.get("/hiring-talents", async (req, res) => {
+      res.json(await hiringTalentCollection.find({}).toArray());
     });
 
     // Connect the client to the server	(optional starting in v4.7)
