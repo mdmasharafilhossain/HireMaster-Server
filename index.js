@@ -31,6 +31,12 @@ async function run() {
       .collection("AppliedJob");
     const staticCollection = client.db("HireMaster").collection("JobPost");
 
+    const hiringTalentCollection = client
+      .db("HireMaster")
+      .collection("HiringTalent");
+
+    const userCollection = client.db("HireMaster").collection("Users");
+
     //  UserProfileCollection
 
     app.post("/userProfile", async (req, res) => {
@@ -40,8 +46,8 @@ async function run() {
     });
 
     app.get("/userProfile", async (req, res) => {
-      const email = req.query.email
-      const query = {email: email}
+      const email = req.query.email;
+      const query = { email: email };
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
@@ -142,19 +148,43 @@ async function run() {
       }
     });
 
-    app.patch('/UsersProfile/:id', async (req, res) => {
-      const item = req.body
-      const id = req.params.id
-      const filter = { _id: new ObjectId(id) }
+    app.patch("/UsersProfile/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          UniversityName: item. UniversityName,
-          
-        }
+          UniversityName: item.UniversityName,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "user already exists" });
       }
-      const result = await UsersProfileCollection.updateOne(filter, updatedDoc)
-      res.send(result)
-    })
+      res.send(await userCollection.insertOne(user));
+      // console.log(user);
+    });
+
+    app.post("/hiring-talents", async (req, res) => {
+      const hirer = req.body;
+      // console.log(hirer);
+      const result = await hiringTalentCollection.insertOne(hirer);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      res.json(await userCollection.find({}).toArray());
+    });
+    app.get("/hiring-talents", async (req, res) => {
+      res.json(await hiringTalentCollection.find({}).toArray());
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
