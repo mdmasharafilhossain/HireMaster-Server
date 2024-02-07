@@ -148,7 +148,22 @@ async function run() {
       const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
         $set: {
-          UniversityName: item. UniversityName,
+          UniversityName: item.UniversityName,
+          
+        }
+      }
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc)
+      res.send(result)
+    })
+
+    app.patch('/UsersProfile/:_id', async (req, res) => {
+      const item = req.body
+      console.log(item)
+      const id = req.params.id
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          image: item.image
           
         }
       }
