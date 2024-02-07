@@ -169,7 +169,7 @@ async function run() {
         return res.send({ status: "user already exists" });
       }
       res.send(await userCollection.insertOne(user));
-      console.log(user);
+      // console.log(user);
     });
 
     app.post("/hiring-talents", async (req, res) => {
