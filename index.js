@@ -52,17 +52,25 @@ async function run() {
     })
 
     //Applied Jobs 
-    app.post("/users-appliedjobs", async(req, res)=>{
+    app.post("/users-appliedjobs", async (req, res) => {
       const appliedjobs = req.body
       console.log(appliedjobs);
       const result = await appliedJobCollection.insertOne(appliedjobs)
       res.send(result)
     })
     // Show Applied Jobs 
-    app.get('/showapplied-jobs', async(req, res)=>{
+    app.get('/showapplied-jobs', async (req, res) => {
       const cursor = appliedJobCollection.find()
       const result = await cursor.toArray()
       res.send(result)
+    })
+
+    app.get('/singleappliedjobs/:email', async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const result = await appliedJobCollection.find(query).toArray();
+      res.send(result);
     })
 
     app.get('/jobpost', async (req, res) => {
