@@ -1,7 +1,8 @@
-const express = require("express");
+ const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
@@ -39,6 +40,7 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
+    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
 
     //  UserProfileCollection
 
@@ -232,6 +234,38 @@ async function run() {
     app.get("/hiring-talents", async (req, res) => {
       res.json(await hiringTalentCollection.find({}).toArray());
     });
+
+
+
+    // ------------------Stripe Payment--------------------
+
+    //Payment Intent
+    app.post("/create-payment-intent",async (req,res)=>{
+      const {price}= req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+
+
+    });
+
+
+    app.post("/payments",async (req,res)=>{
+      const payment = req.body;
+      const paymentResult = UserPaymentCollection.insertOne(payment);
+      res.send(paymentResult);
+    })
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
