@@ -40,6 +40,7 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
+    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
 
     //  UserProfileCollection
 
@@ -239,10 +240,10 @@ async function run() {
     // ------------------Stripe Payment--------------------
 
     //Payment Intent
-    app.post("create-payment-intent",async (req,res)=>{
+    app.post("/create-payment-intent",async (req,res)=>{
       const {price}= req.body;
       const amount = parseInt(price * 100);
-
+      console.log(amount);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
