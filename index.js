@@ -223,7 +223,7 @@ async function run() {
 
       // ---------------------- Admin Dashboard ------------------------
 
-      // pagination for users
+      // pagination for user list
 
       app.get('/users/pagination',async (req,res)=>{
         const query = req.query;
