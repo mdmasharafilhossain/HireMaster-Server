@@ -227,7 +227,7 @@ async function run() {
         const page = query.page;
         console.log(page);
        const pageNumber = parseInt(page);
-        const perPage = 5;
+        const perPage = 4;
         const skip = pageNumber * perPage ;
         const users = userCollection.find().skip(skip).limit(perPage);
       const result = await  users.toArray();
