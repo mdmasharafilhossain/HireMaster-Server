@@ -221,7 +221,10 @@ async function run() {
       // console.log(user);
     });
 
-      // ------------------Pagination in Admin Dashboard in Route AllUsers----------------
+      // ---------------------- Admin Dashboard ------------------------
+
+      // pagination for users
+      
       app.get('/users/pagination',async (req,res)=>{
         const query = req.query;
         const page = query.page;
@@ -234,7 +237,9 @@ async function run() {
       const UsersCount = await   userCollection.countDocuments();
       res.send({result,UsersCount});
     });
+      
 
+    // Make Admin to User
     app.patch('/users/admin/:id', async (req,res)=>{
       const id = req.params.id;
       const filter = {_id: new ObjectId(id)};
@@ -245,7 +250,15 @@ async function run() {
       }
       const result = await userCollection.updateOne(filter,UpdatedDoc);
       res.send(result);
-    } ) 
+    } ) ;
+
+    // Delete Job Seeker
+    app.delete('/users/JobSeeker/:id', async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+   });
 
 
     app.post("/hiring-talents", async (req, res) => {
