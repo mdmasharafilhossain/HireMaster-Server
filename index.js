@@ -221,9 +221,32 @@ async function run() {
       // console.log(user);
     });
 
-     // ------------------Pagination in Admin Dashboard in Route AllUsers----------------
+      // ------------------Pagination in Admin Dashboard in Route AllUsers----------------
+      app.get('/users/pagination',async (req,res)=>{
+        const query = req.query;
+        const page = query.page;
+        console.log(page);
+       const pageNumber = parseInt(page);
+        const perPage = 4;
+        const skip = pageNumber * perPage ;
+        const users = userCollection.find().skip(skip).limit(perPage);
+      const result = await  users.toArray();
+      const UsersCount = await   userCollection.countDocuments();
+      res.send({result,UsersCount});
+    });
 
-     
+    app.patch('/users/admin/:id', async (req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const UpdatedDoc = {
+        $set :{
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter,UpdatedDoc);
+      res.send(result);
+    } ) 
+
 
     app.post("/hiring-talents", async (req, res) => {
       const hirer = req.body;
