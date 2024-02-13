@@ -224,7 +224,7 @@ async function run() {
       // ---------------------- Admin Dashboard ------------------------
 
       // pagination for users
-      
+
       app.get('/users/pagination',async (req,res)=>{
         const query = req.query;
         const page = query.page;
@@ -251,6 +251,20 @@ async function run() {
       const result = await userCollection.updateOne(filter,UpdatedDoc);
       res.send(result);
     } ) ;
+
+    // remove admin 
+    app.patch('/users/remove-admin/:id', async (req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const UpdatedDoc = {
+        $unset: {
+          role: "" 
+      }
+      }
+      const result = await userCollection.updateOne(filter,UpdatedDoc);
+      res.send(result);
+    } ) ;
+
 
     // Delete Job Seeker
     app.delete('/users/JobSeeker/:id', async(req,res)=>{
