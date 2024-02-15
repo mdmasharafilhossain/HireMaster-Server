@@ -1,8 +1,8 @@
- const express = require("express");
+const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
@@ -40,7 +40,12 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
-    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
+    const UserPaymentCollection = client
+      .db("HireMaster")
+      .collection("Payments");
+    const subscriberCollection = client
+      .db("HireMaster")
+      .collection("Subscribers");
 
     //  UserProfileCollection
 
@@ -119,28 +124,27 @@ async function run() {
       res.send(result);
     });
 
-    
     //Applied Jobs
     app.post("/users-appliedjobs", async (req, res) => {
       const appliedjobs = req.body;
       console.log(appliedjobs);
-      const result = await appliedJobCollection.insertOne(appliedjobs)
-      res.send(result)
-    })
-    // Show Applied Jobs 
-    app.get('/showapplied-jobs', async (req, res) => {
-      const cursor = appliedJobCollection.find()
-      const result = await cursor.toArray()
-      res.send(result)
-    })
+      const result = await appliedJobCollection.insertOne(appliedjobs);
+      res.send(result);
+    });
+    // Show Applied Jobs
+    app.get("/showapplied-jobs", async (req, res) => {
+      const cursor = appliedJobCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
-    app.get('/singleappliedjobs/:email', async (req, res) => {
+    app.get("/singleappliedjobs/:email", async (req, res) => {
       const email = req.params.email;
       console.log(email);
       const query = { email: email };
       const result = await appliedJobCollection.find(query).toArray();
       res.send(result);
-    })
+    });
 
     app.get("/jobpost", async (req, res) => {
       const cursor = jobCollection.find();
@@ -221,59 +225,67 @@ async function run() {
       // console.log(user);
     });
 
-      // ---------------------- Admin Dashboard ------------------------
-
-      // pagination for user list
-
-      app.get('/users/pagination',async (req,res)=>{
-        const query = req.query;
-        const page = query.page;
-        console.log(page);
-       const pageNumber = parseInt(page);
-        const perPage = 4;
-        const skip = pageNumber * perPage ;
-        const users = userCollection.find().skip(skip).limit(perPage);
-      const result = await  users.toArray();
-      const UsersCount = await   userCollection.countDocuments();
-      res.send({result,UsersCount});
+    app.post("/subscribers", async (req, res) => {
+      const subscriber = req.body;
+      const query = { email: subscriber.email };
+      const isExist = await subscriberCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "subscriber already exists" });
+      }
+      res.send(await subscriberCollection.insertOne(subscriber));
+      // console.log(user);
     });
-      
+
+    // ---------------------- Admin Dashboard ------------------------
+
+    // pagination for user list
+
+    app.get("/users/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = userCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await userCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
 
     // Make Admin to User
-    app.patch('/users/admin/:id', async (req,res)=>{
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
-        $set :{
-          role: 'admin'
-        }
-      }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
-    } ) ;
+    });
 
-    // remove admin 
-    app.patch('/users/remove-admin/:id', async (req,res)=>{
+    // remove admin
+    app.patch("/users/remove-admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
         $unset: {
-          role: "" 
-      }
-      }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
+          role: "",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
-    } ) ;
-
+    });
 
     // Delete Job Seeker
-    app.delete('/users/JobSeeker/:id', async(req,res)=>{
+    app.delete("/users/JobSeeker/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
-   });
-
+    });
 
     app.post("/hiring-talents", async (req, res) => {
       const hirer = req.body;
@@ -282,44 +294,37 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
-      res.json(await userCollection.find({}).toArray());
+    app.get("/subscribers", async (req, res) => {
+      res.json(await subscriberCollection.find({}).toArray());
     });
     app.get("/hiring-talents", async (req, res) => {
       res.json(await hiringTalentCollection.find({}).toArray());
     });
 
-
-
     // ------------------Stripe Payment--------------------
 
     //Payment Intent
-    app.post("/create-payment-intent",async (req,res)=>{
-      const {price}= req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
       console.log(amount);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
-
+        currency: "usd",
+        payment_method_types: ["card"],
       });
 
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-
-
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
-
-    app.post("/payments",async (req,res)=>{
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
-    })
-
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
