@@ -1,9 +1,11 @@
 const express = require("express");
+const cors = require("cors");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
@@ -75,6 +77,7 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
+    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -287,6 +290,60 @@ async function run() {
       // console.log(user);
     });
 
+      // ---------------------- Admin Dashboard ------------------------
+
+      // pagination for user list
+
+      app.get('/users/pagination',async (req,res)=>{
+        const query = req.query;
+        const page = query.page;
+        console.log(page);
+       const pageNumber = parseInt(page);
+        const perPage = 4;
+        const skip = pageNumber * perPage ;
+        const users = userCollection.find().skip(skip).limit(perPage);
+      const result = await  users.toArray();
+      const UsersCount = await   userCollection.countDocuments();
+      res.send({result,UsersCount});
+    });
+      
+
+    // Make Admin to User
+    app.patch('/users/admin/:id', async (req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const UpdatedDoc = {
+        $set :{
+          role: 'admin'
+        }
+      }
+      const result = await userCollection.updateOne(filter,UpdatedDoc);
+      res.send(result);
+    } ) ;
+
+    // remove admin 
+    app.patch('/users/remove-admin/:id', async (req,res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const UpdatedDoc = {
+        $unset: {
+          role: "" 
+      }
+      }
+      const result = await userCollection.updateOne(filter,UpdatedDoc);
+      res.send(result);
+    } ) ;
+
+
+    // Delete Job Seeker
+    app.delete('/users/JobSeeker/:id', async(req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+   });
+
+
     app.post("/hiring-talents", async (req, res) => {
       const hirer = req.body;
       // console.log(hirer);
@@ -300,6 +357,38 @@ async function run() {
     app.get("/hiring-talents", async (req, res) => {
       res.json(await hiringTalentCollection.find({}).toArray());
     });
+
+
+
+    // ------------------Stripe Payment--------------------
+
+    //Payment Intent
+    app.post("/create-payment-intent",async (req,res)=>{
+      const {price}= req.body;
+      const amount = parseInt(price * 100);
+      console.log(amount);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+
+
+    });
+
+
+    app.post("/payments",async (req,res)=>{
+      const payment = req.body;
+      const paymentResult = UserPaymentCollection.insertOne(payment);
+      res.send(paymentResult);
+    })
+
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
