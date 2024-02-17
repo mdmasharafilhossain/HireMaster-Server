@@ -4,6 +4,7 @@ const app = express();
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -46,6 +47,7 @@ async function run() {
     const subscriberCollection = client
       .db("HireMaster")
       .collection("Subscribers");
+    const newsCollection = client.db("HireMaster").collection("News");
 
     //  UserProfileCollection
 
@@ -235,7 +237,45 @@ async function run() {
       res.send(await subscriberCollection.insertOne(subscriber));
       // console.log(user);
     });
+    app.post("/job-news", async (req, res) => {
+      const newsData = req.body;
+      const slug = slugify(req.body.title);
 
+      const isExisting = await newsCollection.findOne({ slug });
+      if (isExisting) {
+        return res.status(400).send({ error: "News title must be unique" });
+      }
+      newsData.slug = slug;
+      try {
+        const result = await newsCollection.insertOne(newsData);
+        res.json(result);
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.delete("/job-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      try {
+        const result = await newsCollection.findOneAndDelete({ slug });
+        if (result.value) {
+          res.json(result.value);
+        } else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.post("/hiring-talents", async (req, res) => {
+      const hirer = req.body;
+      // console.log(hirer);
+      const result = await hiringTalentCollection.insertOne(hirer);
+      res.send(result);
+    });
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
@@ -287,13 +327,9 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/hiring-talents", async (req, res) => {
-      const hirer = req.body;
-      // console.log(hirer);
-      const result = await hiringTalentCollection.insertOne(hirer);
-      res.send(result);
+    app.get("/job-news", async (req, res) => {
+      res.json(await newsCollection.find({}).toArray());
     });
-
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
