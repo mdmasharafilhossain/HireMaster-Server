@@ -237,6 +237,7 @@ async function run() {
       res.send(await subscriberCollection.insertOne(subscriber));
       // console.log(user);
     });
+
     app.post("/job-news", async (req, res) => {
       const newsData = req.body;
       const slug = slugify(req.body.title);
@@ -245,7 +246,7 @@ async function run() {
       if (isExisting) {
         return res.status(400).send({ error: "News title must be unique" });
       }
-      newsData.slug = slug;
+      newsData.slug = slug.toLowerCase();
       try {
         const result = await newsCollection.insertOne(newsData);
         res.json(result);
@@ -255,13 +256,29 @@ async function run() {
       }
     });
 
-    app.delete("/job-news/:slug", async (req, res) => {
+    /* app.delete("/job-news/:slug", async (req, res) => {
       const slug = req.params.slug;
       try {
         const result = await newsCollection.findOneAndDelete({ slug });
-        if (result.value) {
-          res.json(result.value);
-        } else {
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    }); */
+
+    app.delete("/job-news/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      try {
+        const result = await newsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        if (result) res.json(result);
+        else {
           res.status(404).send({ error: "News not found" });
         }
       } catch (error) {
@@ -276,6 +293,33 @@ async function run() {
       const result = await hiringTalentCollection.insertOne(hirer);
       res.send(result);
     });
+
+    app.get("/tech-news", async (req, res) => {
+      res.json(await newsCollection.find({}).toArray());
+    });
+
+    app.get("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      console.log(slug);
+      try {
+        const result = await newsCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/subscribers", async (req, res) => {
+      res.json(await subscriberCollection.find({}).toArray());
+    });
+    app.get("/hiring-talents", async (req, res) => {
+      res.json(await hiringTalentCollection.find({}).toArray());
+    });
+
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
@@ -325,16 +369,6 @@ async function run() {
       const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
-    });
-
-    app.get("/job-news", async (req, res) => {
-      res.json(await newsCollection.find({}).toArray());
-    });
-    app.get("/subscribers", async (req, res) => {
-      res.json(await subscriberCollection.find({}).toArray());
-    });
-    app.get("/hiring-talents", async (req, res) => {
-      res.json(await hiringTalentCollection.find({}).toArray());
     });
 
     // ------------------Stripe Payment--------------------
