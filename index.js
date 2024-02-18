@@ -238,7 +238,12 @@ async function run() {
       // console.log(user);
     });
 
-    app.post("/job-news", async (req, res) => {
+    //
+    //
+    //
+    // tech news routes
+    //
+    app.post("/tech-news", async (req, res) => {
       const newsData = req.body;
       const slug = slugify(req.body.title);
 
@@ -255,8 +260,26 @@ async function run() {
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
+    app.get("/tech-news", async (req, res) => {
+      res.json(await newsCollection.find({}).toArray());
+    });
 
-    /* app.delete("/job-news/:slug", async (req, res) => {
+    app.get("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      // console.log(slug);
+      try {
+        const result = await newsCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.delete("/tech-news/:slug", async (req, res) => {
       const slug = req.params.slug;
       try {
         const result = await newsCollection.findOneAndDelete({ slug });
@@ -268,21 +291,26 @@ async function run() {
         console.error("Error inserting news:", error);
         res.status(500).send({ error: "Internal Server Error" });
       }
-    }); */
+    });
 
-    app.delete("/job-news/:id", async (req, res) => {
-      const id = req.params.id;
-      console.log(id);
+    app.patch("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      const newSlug = slugify(req.body.title);
+      const newNews = req.body;
+      newNews.slug = newSlug.toLowerCase();
+
       try {
-        const result = await newsCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
+        const result = await newsCollection.findOneAndUpdate(
+          {
+            slug,
+          },
+          { $set: newNews }
+        );
         if (result) res.json(result);
         else {
           res.status(404).send({ error: "News not found" });
         }
       } catch (error) {
-        console.error("Error inserting news:", error);
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
@@ -292,25 +320,6 @@ async function run() {
       // console.log(hirer);
       const result = await hiringTalentCollection.insertOne(hirer);
       res.send(result);
-    });
-
-    app.get("/tech-news", async (req, res) => {
-      res.json(await newsCollection.find({}).toArray());
-    });
-
-    app.get("/tech-news/:slug", async (req, res) => {
-      const slug = req.params.slug;
-      console.log(slug);
-      try {
-        const result = await newsCollection.findOne({ slug });
-        if (result) {
-          res.json(result);
-        } else {
-          res.status(404).send({ error: "News not found" });
-        }
-      } catch (error) {
-        res.status(500).send({ error: "Internal Server Error" });
-      }
     });
 
     app.get("/subscribers", async (req, res) => {
