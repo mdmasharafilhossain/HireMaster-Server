@@ -260,8 +260,23 @@ async function run() {
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
+
     app.get("/tech-news", async (req, res) => {
-      res.json(await newsCollection.find({}).toArray());
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 2;
+      const skip = (page - 1) * limit;
+      const news = await newsCollection
+        .find({})
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalNewsCount = await newsCollection.countDocuments();
+      res.json({
+        news,
+        totalNewsCount,
+        currentPage: page,
+        itemsPerPage: limit,
+      });
     });
 
     app.get("/tech-news/:slug", async (req, res) => {
