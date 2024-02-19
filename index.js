@@ -197,13 +197,41 @@ async function run() {
       }
     });
 
-    app.patch("/UsersProfile/:id", async (req, res) => {
+    app.patch("/UsersProfile/education/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          UniversityName: item.UniversityName,
+          educationInstitute: item.educationInstitute,
+            degree:item.degree,
+            studyField:item.studyField,
+            educationStartMonth:item.educationStartMonth,
+            educationStartYear:item.educationStartYear,
+            educationEndMonth:item.educationEndMonth,
+            educationEndYear:item.educationEndYear,
+            educationDescription:item.educationDescription
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+            name: item.name,
+            UniversityName:item.UniversityName,
+            headline:item.headline,
+            location:item.location,
+            linkedin:item.linkedin,
+            portfolio:item.portfolio,
+            github:item.github,
+            aboutDescription:item.aboutDescription,
+
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
