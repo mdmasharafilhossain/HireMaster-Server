@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -76,7 +77,13 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
-    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
+    const UserPaymentCollection = client
+      .db("HireMaster")
+      .collection("Payments");
+    const subscriberCollection = client
+      .db("HireMaster")
+      .collection("Subscribers");
+    const newsCollection = client.db("HireMaster").collection("News");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -265,13 +272,40 @@ async function run() {
       }
     });
 
-    app.patch("/UsersProfile/:id", async (req, res) => {
+    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          UniversityName: item.UniversityName,
+          name: item.name,
+            UniversityName:item.UniversityName,
+            headline:item.headline,
+            location:item.location,
+            linkedin:item.linkedin,
+            portfolio:item.portfolio,
+            github:item.github,
+            aboutDescription:item.aboutDescription
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/education/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          educationInstitute: item.educationInstitute,
+            degree:item.degree,
+            studyField:item.studyField,
+            educationStartMonth:item.educationStartMonth,
+            educationStartYear:item.educationStartYear,
+            educationEndMonth:item.educationEndMonth,
+            educationEndYear:item.educationEndYear,
+            educationDescription:item.educationDescription
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -289,59 +323,108 @@ async function run() {
       // console.log(user);
     });
 
-      // ---------------------- Admin Dashboard ------------------------
-
-      // pagination for user list
-
-      app.get('/users/pagination',async (req,res)=>{
-        const query = req.query;
-        const page = query.page;
-        console.log(page);
-       const pageNumber = parseInt(page);
-        const perPage = 4;
-        const skip = pageNumber * perPage ;
-        const users = userCollection.find().skip(skip).limit(perPage);
-      const result = await  users.toArray();
-      const UsersCount = await   userCollection.countDocuments();
-      res.send({result,UsersCount});
+    app.post("/subscribers", async (req, res) => {
+      const subscriber = req.body;
+      const query = { email: subscriber.email };
+      const isExist = await subscriberCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "subscriber already exists" });
+      }
+      res.send(await subscriberCollection.insertOne(subscriber));
+      // console.log(user);
     });
-      
 
-    // Make Admin to User
-    app.patch('/users/admin/:id', async (req,res)=>{
-      const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
-      const UpdatedDoc = {
-        $set :{
-          role: 'admin'
+    //
+    //
+    //
+    // tech news routes
+    //
+    app.post("/tech-news", async (req, res) => {
+      const newsData = req.body;
+      const slug = slugify(req.body.title);
+
+      const isExisting = await newsCollection.findOne({ slug });
+      if (isExisting) {
+        return res.status(400).send({ error: "News title must be unique" });
+      }
+      newsData.slug = slug.toLowerCase();
+      try {
+        const result = await newsCollection.insertOne(newsData);
+        res.json(result);
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/tech-news", async (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 2;
+      const skip = (page - 1) * limit;
+      const news = await newsCollection
+        .find({})
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalNewsCount = await newsCollection.countDocuments();
+      res.json({
+        news,
+        totalNewsCount,
+        currentPage: page,
+        itemsPerPage: limit,
+      });
+    });
+
+    app.get("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      // console.log(slug);
+      try {
+        const result = await newsCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "News not found" });
         }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
       }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
-      res.send(result);
-    } ) ;
+    });
 
-    // remove admin 
-    app.patch('/users/remove-admin/:id', async (req,res)=>{
-      const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
-      const UpdatedDoc = {
-        $unset: {
-          role: "" 
+    app.delete("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      try {
+        const result = await newsCollection.findOneAndDelete({ slug });
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
       }
+    });
+
+    app.patch("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      const newSlug = slugify(req.body.title);
+      const newNews = req.body;
+      newNews.slug = newSlug.toLowerCase();
+
+      try {
+        const result = await newsCollection.findOneAndUpdate(
+          {
+            slug,
+          },
+          { $set: newNews }
+        );
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
       }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
-      res.send(result);
-    } ) ;
-
-
-    // Delete Job Seeker
-    app.delete('/users/JobSeeker/:id', async(req,res)=>{
-      const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
-   });
-
+    });
 
     app.post("/hiring-talents", async (req, res) => {
       const hirer = req.body;
@@ -350,44 +433,88 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users", async (req, res) => {
-      res.json(await userCollection.find({}).toArray());
+    app.get("/subscribers", async (req, res) => {
+      res.json(await subscriberCollection.find({}).toArray());
     });
     app.get("/hiring-talents", async (req, res) => {
       res.json(await hiringTalentCollection.find({}).toArray());
     });
 
+    // ---------------------- Admin Dashboard ------------------------
 
+    // pagination for user list
+
+    app.get("/users/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = userCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await userCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
+
+    // Make Admin to User
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin
+    app.patch("/users/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // Delete Job Seeker
+    app.delete("/users/JobSeeker/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // ------------------Stripe Payment--------------------
 
     //Payment Intent
-    app.post("/create-payment-intent",async (req,res)=>{
-      const {price}= req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
       console.log(amount);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
-
+        currency: "usd",
+        payment_method_types: ["card"],
       });
 
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-
-
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
-
-    app.post("/payments",async (req,res)=>{
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
-    })
-
+    });
 
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
