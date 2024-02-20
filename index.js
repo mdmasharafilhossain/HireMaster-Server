@@ -1,13 +1,13 @@
 const express = require("express");
+const cloudinary = require("cloudinary").v2;
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
-
 // middleware
 app.use(
   cors({
@@ -20,6 +20,8 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.json({ extended: true, limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -52,6 +54,11 @@ const verifyToken = async (req, res, next) => {
   });
 };
 
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
 
 async function run() {
   try {
@@ -76,7 +83,16 @@ async function run() {
       .collection("HiringTalent");
 
     const userCollection = client.db("HireMaster").collection("Users");
-    const UserPaymentCollection = client.db("HireMaster").collection("Payments");
+    const UserPaymentCollection = client
+      .db("HireMaster")
+      .collection("Payments");
+    const subscriberCollection = client
+      .db("HireMaster")
+      .collection("Subscribers");
+    const newsCollection = client.db("HireMaster").collection("News");
+    const jobFairUserCollection = client
+      .db("HireMaster")
+      .collection("Fair-registration");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -102,7 +118,6 @@ async function run() {
       console.log("logging out", user);
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
-
     //  UserProfileCollection
 
     app.post("/userProfile", async (req, res) => {
@@ -289,59 +304,56 @@ async function run() {
       // console.log(user);
     });
 
-      // ---------------------- Admin Dashboard ------------------------
+    // ---------------------- Admin Dashboard ------------------------
 
-      // pagination for user list
+    // pagination for user list
 
-      app.get('/users/pagination',async (req,res)=>{
-        const query = req.query;
-        const page = query.page;
-        console.log(page);
-       const pageNumber = parseInt(page);
-        const perPage = 4;
-        const skip = pageNumber * perPage ;
-        const users = userCollection.find().skip(skip).limit(perPage);
-      const result = await  users.toArray();
-      const UsersCount = await   userCollection.countDocuments();
-      res.send({result,UsersCount});
+    app.get("/users/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = userCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await userCollection.countDocuments();
+      res.send({ result, UsersCount });
     });
-      
 
     // Make Admin to User
-    app.patch('/users/admin/:id', async (req,res)=>{
+    app.patch("/users/admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
-        $set :{
-          role: 'admin'
-        }
-      }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
-    } ) ;
+    });
 
-    // remove admin 
-    app.patch('/users/remove-admin/:id', async (req,res)=>{
+    // remove admin
+    app.patch("/users/remove-admin/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
         $unset: {
-          role: "" 
-      }
-      }
-      const result = await userCollection.updateOne(filter,UpdatedDoc);
+          role: "",
+        },
+      };
+      const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
-    } ) ;
-
+    });
 
     // Delete Job Seeker
-    app.delete('/users/JobSeeker/:id', async(req,res)=>{
+    app.delete("/users/JobSeeker/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const result = await userCollection.deleteOne(query);
       res.send(result);
-   });
-
+    });
 
     app.post("/hiring-talents", async (req, res) => {
       const hirer = req.body;
@@ -357,38 +369,93 @@ async function run() {
       res.json(await hiringTalentCollection.find({}).toArray());
     });
 
+    app.post("/fair-registration", async (req, res) => {
+      const register = req.body;
+      const query = { email: register.email };
+      const isRegistered = await jobFairUserCollection.findOne(query);
 
+      try {
+        if (isRegistered) {
+          return res.send({ status: " Already registered." });
+        }
+        const result = await jobFairUserCollection.insertOne(register);
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/fair-registration", async (req, res) => {
+      res.json(await jobFairUserCollection.find({}).toArray());
+    });
+
+    // ---------------------- Admin Dashboard ------------------------
 
     // ------------------Stripe Payment--------------------
 
     //Payment Intent
-    app.post("/create-payment-intent",async (req,res)=>{
-      const {price}= req.body;
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
       const amount = parseInt(price * 100);
       console.log(amount);
 
       const paymentIntent = await stripe.paymentIntents.create({
         amount: amount,
-        currency: 'usd',
-        payment_method_types: ['card']
-
+        currency: "usd",
+        payment_method_types: ["card"],
       });
 
       res.send({
-        clientSecret: paymentIntent.client_secret
-      })
-
-
+        clientSecret: paymentIntent.client_secret,
+      });
     });
 
-
-    app.post("/payments",async (req,res)=>{
+    app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
-    })
+    });
 
+    //
+    // cloudinary
+    exports.upload = async (req, res) => {
+      try {
+        let result = await cloudinary.uploader.upload(req.body.image, {
+          public_id: `${Date.now()}`,
+          resource_type: "auto",
+        });
 
+        if (result) {
+          res.json({
+            public_id: result.public_id,
+            url: result.secure_url,
+          });
+        }
+      } catch (error) {
+        console.error("Error uploading to Cloudinary:", error);
+        res.status(500).json({
+          error: "Internal Server Error",
+        });
+      }
+    };
+
+    exports.remove = (req, res) => {
+      const image_id = req.body.public_id;
+      cloudinary.uploader.destroy(image_id, (err) => {
+        if (err) {
+          console.error("Error deleting image:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+        }
+        res.send({ message: "Image deleted successfully!" });
+      });
+    };
+
+    app.post("/profile/imageUpload", exports.upload);
+    app.post("/profile/imageRemove", exports.remove);
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
