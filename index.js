@@ -132,14 +132,6 @@ async function run() {
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
-    // app.get("/userProfile/:email", async (req, res) => {
-    //   const email = req.params.email;
-    //   const query = {
-    //     email: email,
-    //   };
-    //   const result = await UsersProfileCollection.findOne(query);
-    //   res.send(result);
-    // });
 
     app.post("/jobpost", async (req, res) => {
       const job = req.body;
@@ -195,14 +187,31 @@ async function run() {
       res.send(result);
     });
 
-    //Applied Jobs
+    //----------------------Applied Jobs--------------------
     app.post("/users-appliedjobs", async (req, res) => {
-      const appliedjobs = req.body;
-      console.log(appliedjobs);
-      const result = await appliedJobCollection.insertOne(appliedjobs);
+      const appliedJob = req.body;
+      console.log(appliedJob);
+      const userEmail = appliedJob.email;
+      const jobId = appliedJob.job_id;
+      const existingApplication = await appliedJobCollection.findOne({
+        email: userEmail,
+        job_id: jobId,
+      });
+      
+      if (existingApplication) {
+        console.log("here");
+        return res.send({
+          message: "Already applied.",
+          insertedId: null,
+        });
+      }
+      
+      const result = await appliedJobCollection.insertOne(appliedJob);
       res.send(result);
     });
-    // Show Applied Jobs
+
+
+    // ------------------Show Applied Jobs-----------------
     app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
       console.log(req.query.email);
       console.log("token owner info", req.cookies.token);
@@ -213,6 +222,32 @@ async function run() {
       if (req.query?.email) {
         query = { email: req.query.email };
       }
+      const result = await appliedJobCollection.find(query).toArray();
+      res.send(result);
+    });
+
+
+    app.delete("/showapplied-jobs/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email
+      };
+      try {
+        const result = await appliedJobCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting application:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+    
+    
+
+
+    app.get("/applied-jobs-from-manager/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { hiring_manager_email: email };
       const result = await appliedJobCollection.find(query).toArray();
       res.send(result);
     });
@@ -230,11 +265,7 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
+
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
