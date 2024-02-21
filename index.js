@@ -449,7 +449,7 @@ async function run() {
 
       try {
         if (isRegistered) {
-          return res.send({ status: " Already registered." });
+          return res.send({ status: "Already registered" });
         }
         const result = await jobFairUserCollection.insertOne(register);
         if (result) res.json(result);
@@ -464,6 +464,41 @@ async function run() {
 
     app.get("/fair-registration", async (req, res) => {
       res.json(await jobFairUserCollection.find({}).toArray());
+    });
+
+    app.get("/fair-registration/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        if (email) {
+          const result = await jobFairUserCollection.findOne({ email });
+          if (result !== null) {
+            res.json(result);
+          } else {
+            res.json({ error: "User not registered for jobfair" });
+          }
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch("/fair-registration/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedUser = req.body;
+      const updatedDoc = {
+        $set: {
+          fullname: updatedUser.fullname,
+          profilePicture: updatedUser.profilePicture,
+        },
+      };
+      const result = await jobFairUserCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.json(result);
     });
 
     // ---------------------- Admin Dashboard ------------------------
