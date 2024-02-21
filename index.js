@@ -1,16 +1,25 @@
 const express = require("express");
-const cloudinary = require("cloudinary").v2;
-const cors = require("cors");
 const app = express();
+const cors = require("cors");
 require("dotenv").config();
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 // middleware
-app.use(cors());
-app.use(express.json({ extended: true, limit: "25mb" }));
-app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      // 'https://hiremaster.netlify.app',
+    ],
+    credentials: true,
+  })
+);
+app.use(express.json());
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -23,24 +32,43 @@ const client = new MongoClient(uri, {
   },
 });
 
-cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUD_KEY,
-  api_secret: process.env.CLOUD_SECRET,
-});
+// ----------------middleware----------------------
+const logger = async (req, res, next) => {
+  console.log("called", req.hostname, req.originalUrl);
+  next();
+};
+
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.JWT_ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
 
 async function run() {
   try {
     const UsersProfileCollection = client
       .db("HireMaster")
       .collection("UsersProfile");
+
     const ManagersProfileCollection = client
       .db("HireMaster")
       .collection("ManagersProfile");
+
     const jobCollection = client.db("HireMaster").collection("jobData");
+
     const appliedJobCollection = client
       .db("HireMaster")
       .collection("AppliedJob");
+
     const staticCollection = client.db("HireMaster").collection("JobPost");
 
     const hiringTalentCollection = client
@@ -58,6 +86,31 @@ async function run() {
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+
+    // -----------------JWT----------------------
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          // secure: true,
+          // sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
     //  UserProfileCollection
 
@@ -144,9 +197,17 @@ async function run() {
       res.send(result);
     });
     // Show Applied Jobs
-    app.get("/showapplied-jobs", async (req, res) => {
-      const cursor = appliedJobCollection.find();
-      const result = await cursor.toArray();
+    app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
+      console.log(req.query.email);
+      console.log("token owner info", req.cookies.token);
+      if (req.user.email !== req.query.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+      const result = await appliedJobCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -213,13 +274,40 @@ async function run() {
       }
     });
 
-    app.patch("/UsersProfile/:id", async (req, res) => {
+    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          UniversityName: item.UniversityName,
+          name: item.name,
+            UniversityName:item.UniversityName,
+            headline:item.headline,
+            location:item.location,
+            linkedin:item.linkedin,
+            portfolio:item.portfolio,
+            github:item.github,
+            aboutDescription:item.aboutDescription
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/education/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          educationInstitute: item.educationInstitute,
+            degree:item.degree,
+            studyField:item.studyField,
+            educationStartMonth:item.educationStartMonth,
+            educationStartYear:item.educationStartYear,
+            educationEndMonth:item.educationEndMonth,
+            educationEndYear:item.educationEndYear,
+            educationDescription:item.educationDescription
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
