@@ -93,6 +93,9 @@ async function run() {
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+    const jobFairEventCollection = client
+      .db("HireMaster")
+      .collection("Fair-events");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -459,10 +462,7 @@ async function run() {
           return res.send({ status: "Already registered" });
         }
         const result = await jobFairUserCollection.insertOne(register);
-        if (result) res.json(result);
-        else {
-          res.status(404).send({ error: "News not found" });
-        }
+        res.json(result);
       } catch (error) {
         console.error("Error inserting news:", error);
         res.status(500).send({ error: "Internal Server Error" });
@@ -502,6 +502,29 @@ async function run() {
       res.json(result);
     });
 
+    app.post("/job-fair/events", async (req, res) => {
+      const event = req.body;
+      res.json(await jobFairEventCollection.insertOne(event));
+    });
+
+    app.get("/job-fair/events", async (req, res) => {
+      res.json(await jobFairEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/profile/sponsor-event/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await jobFairEventCollection
+          .find({
+            sponsor_email: email,
+          })
+          .toArray();
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
