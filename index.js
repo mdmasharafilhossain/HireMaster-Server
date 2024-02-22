@@ -1,10 +1,11 @@
 const express = require("express");
+const cloudinary = require("cloudinary").v2;
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
@@ -18,8 +19,8 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
-app.use(cookieParser());
+app.use(express.json({ extended: true, limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -30,6 +31,13 @@ const client = new MongoClient(uri, {
     strict: true,
     deprecationErrors: true,
   },
+});
+
+// cloudinary image upload
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
 });
 
 // ----------------middleware----------------------
@@ -51,7 +59,6 @@ const verifyToken = async (req, res, next) => {
     next();
   });
 };
-
 
 async function run() {
   try {
@@ -281,13 +288,13 @@ async function run() {
       const updatedDoc = {
         $set: {
           name: item.name,
-            UniversityName:item.UniversityName,
-            headline:item.headline,
-            location:item.location,
-            linkedin:item.linkedin,
-            portfolio:item.portfolio,
-            github:item.github,
-            aboutDescription:item.aboutDescription
+          UniversityName: item.UniversityName,
+          headline: item.headline,
+          location: item.location,
+          linkedin: item.linkedin,
+          portfolio: item.portfolio,
+          github: item.github,
+          aboutDescription: item.aboutDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -301,13 +308,13 @@ async function run() {
       const updatedDoc = {
         $set: {
           educationInstitute: item.educationInstitute,
-            degree:item.degree,
-            studyField:item.studyField,
-            educationStartMonth:item.educationStartMonth,
-            educationStartYear:item.educationStartYear,
-            educationEndMonth:item.educationEndMonth,
-            educationEndYear:item.educationEndYear,
-            educationDescription:item.educationDescription
+          degree: item.degree,
+          studyField: item.studyField,
+          educationStartMonth: item.educationStartMonth,
+          educationStartYear: item.educationStartYear,
+          educationEndMonth: item.educationEndMonth,
+          educationEndYear: item.educationEndYear,
+          educationDescription: item.educationDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -469,14 +476,8 @@ async function run() {
     app.get("/fair-registration/:email", async (req, res) => {
       const email = req.params.email;
       try {
-        if (email) {
-          const result = await jobFairUserCollection.findOne({ email });
-          if (result !== null) {
-            res.json(result);
-          } else {
-            res.json({ error: "User not registered for jobfair" });
-          }
-        }
+        const result = await jobFairUserCollection.findOne({ email });
+        res.json(result);
       } catch (error) {
         res.status(500).send({ error: "Internal Server Error" });
       }
