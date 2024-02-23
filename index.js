@@ -439,10 +439,14 @@ async function run() {
     });
 
     app.post("/hiring-talents", async (req, res) => {
-      const hirer = req.body;
-      // console.log(hirer);
-      const result = await hiringTalentCollection.insertOne(hirer);
-      res.send(result);
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "user already exists" });
+      }
+      res.send(await userCollection.insertOne(user));
+      // console.log(user);
     });
 
     app.get("/subscribers", async (req, res) => {
