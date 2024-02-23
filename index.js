@@ -475,6 +475,18 @@ async function run() {
       res.send(result);
     });
 
+    // remove admin
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
 
 
 
