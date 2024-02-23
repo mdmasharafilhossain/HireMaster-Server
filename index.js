@@ -93,6 +93,9 @@ async function run() {
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+    const jobFairEventCollection = client
+      .db("HireMaster")
+      .collection("Fair-events");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -436,18 +439,74 @@ async function run() {
     });
 
     app.post("/hiring-talents", async (req, res) => {
-      const hirer = req.body;
-      // console.log(hirer);
-      const result = await hiringTalentCollection.insertOne(hirer);
-      res.send(result);
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "user already exists" });
+      }
+      res.send(await userCollection.insertOne(user));
+      // console.log(user);
     });
 
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
-    app.get("/hiring-talents", async (req, res) => {
-      res.json(await hiringTalentCollection.find({}).toArray());
+    //--------------Pagination on Hiring Manager List----------------
+    app.get("/hiring-talents/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = hiringTalentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await hiringTalentCollection.countDocuments();
+      res.send({ result, UsersCount });
     });
+
+    //Make Admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+
+
+
+   //delete hiring manager 
+   app.delete("/hiring-talents/HR/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await hiringTalentCollection.deleteOne(query);
+    res.send(result);
+  });
+   
+
+   
+   
+   
 
     app.post("/fair-registration", async (req, res) => {
       const register = req.body;
@@ -459,10 +518,7 @@ async function run() {
           return res.send({ status: "Already registered" });
         }
         const result = await jobFairUserCollection.insertOne(register);
-        if (result) res.json(result);
-        else {
-          res.status(404).send({ error: "News not found" });
-        }
+        res.json(result);
       } catch (error) {
         console.error("Error inserting news:", error);
         res.status(500).send({ error: "Internal Server Error" });
@@ -502,6 +558,29 @@ async function run() {
       res.json(result);
     });
 
+    app.post("/job-fair/events", async (req, res) => {
+      const event = req.body;
+      res.json(await jobFairEventCollection.insertOne(event));
+    });
+
+    app.get("/job-fair/events", async (req, res) => {
+      res.json(await jobFairEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/profile/sponsor-event/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await jobFairEventCollection
+          .find({
+            sponsor_email: email,
+          })
+          .toArray();
+
+        res.json(result);
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
@@ -572,10 +651,32 @@ async function run() {
       });
     });
 
+    // pagination added in Premium User list
+    app.get("/payments/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = UserPaymentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await UserPaymentCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
+    });
+
+    // premium user delete 
+    app.delete("/payments/PremiumUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await UserPaymentCollection.deleteOne(query);
+      res.send(result);
     });
 
     //
