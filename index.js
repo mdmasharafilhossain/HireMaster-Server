@@ -448,9 +448,61 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
-    app.get("/hiring-talents", async (req, res) => {
-      res.json(await hiringTalentCollection.find({}).toArray());
+    //--------------Pagination on Hiring Manager List----------------
+    app.get("/hiring-talents/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = hiringTalentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await hiringTalentCollection.countDocuments();
+      res.send({ result, UsersCount });
     });
+
+    //Make Admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+
+
+
+   //delete hiring manager 
+   app.delete("/hiring-talents/HR/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await hiringTalentCollection.deleteOne(query);
+    res.send(result);
+  });
+   
+
+   
+   
+   
 
     app.post("/fair-registration", async (req, res) => {
       const register = req.body;
