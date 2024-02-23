@@ -466,47 +466,11 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
-    //Make Admin to Hiring Manager
-    app.patch("/hiring-talents/admin/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const UpdatedDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
-      res.send(result);
-    });
-
-    // remove admin
-    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const UpdatedDoc = {
-        $unset: {
-          role: "",
-        },
-      };
-      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
-      res.send(result);
-    });
-
-
-
-
-   //delete hiring manager 
-   app.delete("/hiring-talents/HR/:id", async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    const result = await hiringTalentCollection.deleteOne(query);
-    res.send(result);
-  });
-   
-
-   
-   
-   
+    //
+    //
+    // Fair registration routes
+    //
+    //
 
     app.post("/fair-registration", async (req, res) => {
       const register = req.body;
@@ -560,11 +524,37 @@ async function run() {
 
     app.post("/job-fair/events", async (req, res) => {
       const event = req.body;
-      res.json(await jobFairEventCollection.insertOne(event));
+      const slug = slugify(req.body.title);
+      const isExisting = await jobFairEventCollection.findOne({ slug });
+      if (isExisting) {
+        return res.status(400).send({ error: "Event title must be unique" });
+      }
+      event.slug = slug.toLowerCase();
+      try {
+        res.json(await jobFairEventCollection.insertOne(event));
+      } catch (error) {
+        console.error("Error inserting event:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
     });
 
     app.get("/job-fair/events", async (req, res) => {
       res.json(await jobFairEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/events/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      // console.log(slug);
+      try {
+        const result = await jobFairEventCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "Event not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
     });
 
     app.get("/job-fair/profile/sponsor-event/:email", async (req, res) => {
@@ -575,12 +565,52 @@ async function run() {
             sponsor_email: email,
           })
           .toArray();
-
         res.json(result);
       } catch (error) {
         res.status(500).send({ error: "Internal Server Error" });
       }
     });
+
+    app.delete("/job-fair/profile/sponsor-event/:slug", async (req, res) => {
+      const slug = req.params.slug;
+
+      try {
+        const result = await jobFairEventCollection.findOneAndDelete({ slug });
+        // if (result.deletedCount > 0) res.json(result);
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "Event not removed." });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch(
+      "/job-fair/profile/sponsor-event/update/:slug",
+      async (req, res) => {
+        const slug = req.params.slug;
+        const newSlug = slugify(req.body.title);
+        const newEvent = req.body;
+        newEvent.slug = newSlug.toLowerCase();
+
+        try {
+          const result = await jobFairEventCollection.findOneAndUpdate(
+            {
+              slug,
+            },
+            { $set: newEvent }
+          );
+          if (result) res.json(result);
+          else {
+            res.status(404).send({ error: "Event not found" });
+          }
+        } catch (error) {
+          res.status(500).send({ error: "Internal Server Error" });
+        }
+      }
+    );
+
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
@@ -671,7 +701,7 @@ async function run() {
       res.send(paymentResult);
     });
 
-    // premium user delete 
+    // premium user delete
     app.delete("/payments/PremiumUser/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -703,13 +733,14 @@ async function run() {
     };
 
     exports.remove = (req, res) => {
+      const removed = req.body;
       const image_id = req.body.public_id;
       cloudinary.uploader.destroy(image_id, err => {
         if (err) {
           console.error("Error deleting image:", err);
           return res.status(500).json({ error: "Internal Server Error" });
         }
-        res.send({ message: "Image deleted successfully!" });
+        res.send({ removed, message: "Image deleted successfully!" });
       });
     };
 
