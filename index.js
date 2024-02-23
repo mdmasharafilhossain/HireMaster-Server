@@ -595,6 +595,15 @@ async function run() {
       });
     });
 
+
+    
+    app.get("/payments/email", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await UserPaymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
