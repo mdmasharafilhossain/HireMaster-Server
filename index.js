@@ -448,6 +448,7 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
+    //--------------Pagination on Hiring Manager List----------------
     app.get("/hiring-talents/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -461,7 +462,16 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
-   //--------------Pagination on Hiring Manager List----------------
+   //delete hiring manager 
+   app.delete("/hiring-talents/HR/:id", async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await hiringTalentCollection.deleteOne(query);
+    res.send(result);
+  });
+   
+
+   
    
    
 
