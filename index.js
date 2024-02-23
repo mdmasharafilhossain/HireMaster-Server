@@ -159,6 +159,15 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/JobPost/:job_role", async (req, res) => {
+      const job_role = req.params.job_role;
+      const query = {
+        job_role: job_role,
+      };
+      const result = await staticCollection.findOne(query);
+      res.send(result);
+    });
+
     // ---------Managers Profile Collection--------------
     app.post("/managerProfile", async (req, res) => {
       const newProfile = req.body;
@@ -319,6 +328,48 @@ async function run() {
           educationEndMonth: item.educationEndMonth,
           educationEndYear: item.educationEndYear,
           educationDescription: item.educationDescription,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/projects/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          projectName: item.projectName,
+        projectLink: item.projectLink,
+        technologies: item.technologies,
+        projectStartMonth: item.projectStartMonth,
+        projectStartYear: item.projectStartYear,
+        projectEndMonth: item.projectEndMonth,
+        projectEndYear: item.projectEndYear,
+        projectDescription: item.projectDescription,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/experience/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          jobTitle: item.jobTitle,
+          jobType: item.jobType,
+          JobType: item.JobType,
+          companyName: item.companyName,
+          jobLocation: item.jobLocation,
+          jobStartMonth: item.jobStartMonth,
+          jobStartYear: item.jobStartYear,
+          jobEndMonth: item.jobEndMonth,
+          jobEndYear: item.jobEndYear,
+          jobDescription: item.jobDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
