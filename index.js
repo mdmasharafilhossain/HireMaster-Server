@@ -462,6 +462,23 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
+    //Make Admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+
+
+
+
    //delete hiring manager 
    app.delete("/hiring-talents/HR/:id", async (req, res) => {
     const id = req.params.id;
