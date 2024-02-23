@@ -651,6 +651,20 @@ async function run() {
       });
     });
 
+    // pagination added in Premium User list
+    app.get("/payments/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = UserPaymentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await UserPaymentCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
