@@ -671,6 +671,14 @@ async function run() {
       res.send(paymentResult);
     });
 
+    // premium user delete 
+    app.delete("/payments/PremiumUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await UserPaymentCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //
     // cloudinary
     exports.upload = async (req, res) => {
