@@ -281,6 +281,7 @@ async function run() {
       }
     });
 
+    //---------------------- User Profile ------------------------
     app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
@@ -320,6 +321,22 @@ async function run() {
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
+
+    app.patch("/UsersProfile/photo/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          photo: item.photo,
+          
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    
 
     app.post("/users", async (req, res) => {
       const user = req.body;
