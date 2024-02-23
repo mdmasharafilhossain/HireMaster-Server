@@ -118,7 +118,7 @@ async function run() {
       console.log("logging out", user);
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
-    //  UserProfileCollection
+    //  ---------UserProfileCollection------------
 
     app.post("/userProfile", async (req, res) => {
       const feedbacks = req.body;
@@ -197,7 +197,7 @@ async function run() {
         email: userEmail,
         job_id: jobId,
       });
-      
+
       if (existingApplication) {
         console.log("here");
         return res.send({
@@ -205,11 +205,10 @@ async function run() {
           insertedId: null,
         });
       }
-      
+
       const result = await appliedJobCollection.insertOne(appliedJob);
       res.send(result);
     });
-
 
     // ------------------Show Applied Jobs-----------------
     app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
@@ -226,11 +225,10 @@ async function run() {
       res.send(result);
     });
 
-
     app.delete("/showapplied-jobs/:email", async (req, res) => {
       const email = req.params.email;
       const query = {
-        email: email
+        email: email,
       };
       try {
         const result = await appliedJobCollection.deleteOne(query);
@@ -240,16 +238,21 @@ async function run() {
         res.status(500).json({ error: "Internal Server Error" });
       }
     });
-    
-    
 
+    // app.get("/applied-jobs-from-manager/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   console.log(email);
+    //   const query = { hiring_manager_email: email };
+    //   const result = await appliedJobCollection.find(query).toArray();
+    //   res.send(result);
+    // });
 
-    app.get("/applied-jobs-from-manager/:email", async (req, res) => {
+    app.get("/notifications/:email", async (req, res) => {
       const email = req.params.email;
-      console.log(email);
-      const query = { hiring_manager_email: email };
-      const result = await appliedJobCollection.find(query).toArray();
-      res.send(result);
+      const applications = await appliedJobCollection
+        .find({ hiring_manager_email: email })
+        .toArray();
+      res.send(applications);
     });
 
     app.get("/singleappliedjobs/:email", async (req, res) => {
