@@ -448,9 +448,22 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
-    app.get("/hiring-talents", async (req, res) => {
-      res.json(await hiringTalentCollection.find({}).toArray());
+    app.get("/hiring-talents/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = hiringTalentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await hiringTalentCollection.countDocuments();
+      res.send({ result, UsersCount });
     });
+
+   //--------------Pagination on Hiring Manager List----------------
+   
+   
 
     app.post("/fair-registration", async (req, res) => {
       const register = req.body;
