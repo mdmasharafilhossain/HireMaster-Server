@@ -756,6 +756,16 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
+
+    app.get('/payments',async(req,res)=>{
+      const cursor = UserPaymentCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+  })
+
+
+
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
