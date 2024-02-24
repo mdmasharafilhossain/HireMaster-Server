@@ -757,11 +757,11 @@ async function run() {
     });
 
 
-    app.get('/payments',async(req,res)=>{
-      const cursor = UserPaymentCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
-  })
+  //   app.get('/payments',async(req,res)=>{
+  //     const cursor = UserPaymentCollection.find();
+  //       const result = await cursor.toArray();
+  //       res.send(result);
+  // })
 
 
 
