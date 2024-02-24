@@ -513,7 +513,12 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
+    
     //--------------Pagination on Hiring Manager List----------------
+    app.get('/hiring-talents',async(req,res)=>{
+      const result = await  hiringTalentCollection.find().toArray();
+    res.send(result);
+    })
     app.get("/hiring-talents/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -526,6 +531,8 @@ async function run() {
       const UsersCount = await hiringTalentCollection.countDocuments();
       res.send({ result, UsersCount });
     });
+
+    
 
     //
     //
