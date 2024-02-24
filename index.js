@@ -680,9 +680,12 @@ async function run() {
     );
 
     // ---------------------- Admin Dashboard ------------------------
-
+    app.get('/users',async(req,res)=>{
+      const result = await  userCollection.find().toArray();
+    res.send(result);
+    })
     // pagination for user list
-
+    
     app.get("/users/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -749,6 +752,11 @@ async function run() {
       });
     });
 
+
+    app.get('/payments',async(req,res)=>{
+      const result = await  UserPaymentCollection.find().toArray();
+    res.send(result);
+    })
     // pagination added in Premium User list
     app.get("/payments/pagination", async (req, res) => {
       const query = req.query;
