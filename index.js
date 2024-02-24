@@ -239,6 +239,11 @@ async function run() {
     //   const result = await cursor.toArray();
     //   res.send(result);
     // });
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
