@@ -283,26 +283,7 @@ async function run() {
         res.send(result);
       }
     });
-
-    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
-      const item = req.body;
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          name: item.name,
-          UniversityName: item.UniversityName,
-          headline: item.headline,
-          location: item.location,
-          linkedin: item.linkedin,
-          portfolio: item.portfolio,
-          github: item.github,
-          aboutDescription: item.aboutDescription,
-        },
-      };
-      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
-      res.send(result);
-    });
+    // --------------User Profile------------------
 
     app.patch("/UsersProfile/education/:id", async (req, res) => {
       const item = req.body;
@@ -311,13 +292,92 @@ async function run() {
       const updatedDoc = {
         $set: {
           educationInstitute: item.educationInstitute,
-          degree: item.degree,
-          studyField: item.studyField,
-          educationStartMonth: item.educationStartMonth,
-          educationStartYear: item.educationStartYear,
-          educationEndMonth: item.educationEndMonth,
-          educationEndYear: item.educationEndYear,
-          educationDescription: item.educationDescription,
+            degree:item.degree,
+            studyField:item.studyField,
+            educationStartMonth:item.educationStartMonth,
+            educationStartYear:item.educationStartYear,
+            educationEndMonth:item.educationEndMonth,
+            educationEndYear:item.educationEndYear,
+            educationDescription:item.educationDescription
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+            name: item.name,
+            UniversityName:item.UniversityName,
+            headline:item.headline,
+            location:item.location,
+            linkedin:item.linkedin,
+            portfolio:item.portfolio,
+            github:item.github,
+            aboutDescription:item.aboutDescription,
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/photo/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+            photo:item.photo
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/projects/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          projectName: item.projectName,
+          projectLink: item.projectLink,
+          technologies: item.technologies,
+          projectStartMonth: item.projectStartMonth,
+          projectStartYear: item.projectStartYear,
+          projectEndMonth: item.projectEndMonth,
+          projectEndYear: item.projectEndYear,
+          projectDescription: item.projectDescription,
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/experience/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          jobTitle: item.jobTitle,
+            jobType: item.jobType,
+            JobType: item.JobType,
+            companyName: item.companyName,
+            jobLocation: item.jobLocation,
+            jobStartMonth: item.jobStartMonth,
+            jobStartYear: item.jobStartYear,
+            jobEndMonth: item.jobEndMonth,
+            jobEndYear: item.jobEndYear,
+            jobDescription: item.jobDescription,
+
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
