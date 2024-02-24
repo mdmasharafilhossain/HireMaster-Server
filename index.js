@@ -384,6 +384,7 @@ async function run() {
       res.send(result);
     });
 
+
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
@@ -501,11 +502,11 @@ async function run() {
     app.post("/hiring-talents", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
-      const isExist = await userCollection.findOne(query);
+      const isExist = await hiringTalentCollection.findOne(query);
       if (isExist) {
         return res.send({ status: "user already exists" });
       }
-      res.send(await userCollection.insertOne(user));
+      res.send(await hiringTalentCollection.insertOne(user));
       // console.log(user);
     });
 
