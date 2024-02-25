@@ -102,6 +102,9 @@ async function run() {
     const premiumUserCourseCollection = client
       .db("HireMaster")
       .collection("Course");
+    const jobFairEventBookingCollection = client
+      .db("HireMaster")
+      .collection("Event-bookings");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -789,6 +792,47 @@ async function run() {
     app.get("/job-fair/event-bookings", async (req, res) => {
       res.json(await jobFairEventBookingCollection.find({}).toArray());
     });
+
+    app.get("/job-fair/job-seeker/event-bookings", async (req, res) => {
+      const { email } = req.query;
+      try {
+        const bookings = await jobFairEventBookingCollection
+          .find({ email: email })
+          .toArray();
+        let events = [];
+        for (const booking of bookings) {
+          const event = await jobFairEventCollection.findOne({
+            slug: booking.slug,
+          });
+
+          events.push(event);
+        }
+        res.json(events);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.delete(
+      "/job-fair/job-seeker/event-bookings/remove",
+      async (req, res) => {
+        const { slug, email } = req.body;
+        // console.log(slug, email);
+        // console.log(req.body);
+        try {
+          const result = await jobFairEventBookingCollection.deleteOne({
+            slug: slug,
+            email: email,
+          });
+          if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Booking not found." });
+          }
+          res.json(result);
+        } catch (error) {
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
 
     // ---------------------- Admin Dashboard ------------------------
     app.get("/users", async (req, res) => {
