@@ -853,7 +853,11 @@ async function run() {
     });
 
 
-
+    app.get("/premiumusercourse", async (req, res) => {
+      const cursor =  premiumUserCourseCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
 
     //
