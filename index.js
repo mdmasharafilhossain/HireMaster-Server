@@ -313,6 +313,16 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/staticjobpost", async (req, res) => {
+    //   const cursor = staticCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -582,7 +592,12 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
+
     //--------------Pagination on Hiring Manager List----------------
+    app.get("/hiring-talents", async (req, res) => {
+      const result = await hiringTalentCollection.find().toArray();
+      res.send(result);
+    });
     app.get("/hiring-talents/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -776,7 +791,10 @@ async function run() {
     });
 
     // ---------------------- Admin Dashboard ------------------------
-
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
     // pagination for user list
 
     app.get("/users/pagination", async (req, res) => {
@@ -885,6 +903,10 @@ async function run() {
       });
     });
 
+    app.get("/payments", async (req, res) => {
+      const result = await UserPaymentCollection.find().toArray();
+      res.send(result);
+    });
     // pagination added in Premium User list
     app.get("/payments/pagination", async (req, res) => {
       const query = req.query;
@@ -936,6 +958,12 @@ async function run() {
     app.post("/premiumusercourse", async (req, res) => {
       const course = req.body;
       const result = await premiumUserCourseCollection.insertOne(course);
+      res.send(result);
+    });
+
+    app.get("/premiumusercourse", async (req, res) => {
+      const cursor = premiumUserCourseCollection.find();
+      const result = await cursor.toArray();
       res.send(result);
     });
 
