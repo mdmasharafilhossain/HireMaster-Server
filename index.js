@@ -96,9 +96,12 @@ async function run() {
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
-    const jobFairEventBookingCollection = client
+    const userReportCollection = client
       .db("HireMaster")
-      .collection("Event-bookings");
+      .collection("UserReport");
+    const premiumUserCourseCollection = client
+      .db("HireMaster")
+      .collection("Course");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -806,6 +809,26 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await UserPaymentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // user report section
+    app.post("/userreport", async (req, res) => {
+      const report = req.body;
+      const result = await userReportCollection.insertOne(report);
+      res.send(result);
+    });
+
+    app.get("/userreport", async (req, res) => {
+      const cursor = userReportCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // Premium User Course Section
+    app.post("/premiumusercourse", async (req, res) => {
+      const course = req.body;
+      const result = await premiumUserCourseCollection.insertOne(course);
       res.send(result);
     });
 
