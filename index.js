@@ -791,6 +791,16 @@ async function run() {
       res.send(result);
     });
 
+    app.get('/userreport',async(req,res)=>{
+      const cursor = userReportCollection.find();
+        const result = await cursor.toArray();
+        res.send(result);
+  })
+
+
+
+
+
 
 
     //
