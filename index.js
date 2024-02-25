@@ -96,6 +96,9 @@ async function run() {
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
+      const userReportCollection = client
+      .db("HireMaster")
+      .collection("UserReport");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
