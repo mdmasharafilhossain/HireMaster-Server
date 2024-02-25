@@ -99,6 +99,9 @@ async function run() {
       const userReportCollection = client
       .db("HireMaster")
       .collection("UserReport");
+      const premiumUserCourseCollection = client
+      .db("HireMaster")
+      .collection("Course");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -798,6 +801,13 @@ async function run() {
   })
 
 
+
+    // Premium User Course Section 
+    app.post("/premiumusercourse", async (req, res) => {
+      const course = req.body;
+      const result = await premiumUserCourseCollection.insertOne(course);
+      res.send(result);
+    });
 
 
 
