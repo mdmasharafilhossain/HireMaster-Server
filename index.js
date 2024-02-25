@@ -783,6 +783,16 @@ async function run() {
       res.send(result);
     });
 
+
+    // user report section 
+    app.post("/userreport", async (req, res) => {
+      const report = req.body;
+      const result = await userReportCollection.insertOne(report);
+      res.send(result);
+    });
+
+
+
     //
     // cloudinary
     exports.upload = async (req, res) => {
