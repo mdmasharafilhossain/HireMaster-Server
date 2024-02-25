@@ -246,6 +246,11 @@ async function run() {
     //   const result = await cursor.toArray();
     //   res.send(result);
     // });
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -515,7 +520,12 @@ async function run() {
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
+    
     //--------------Pagination on Hiring Manager List----------------
+    app.get('/hiring-talents',async(req,res)=>{
+      const result = await  hiringTalentCollection.find().toArray();
+    res.send(result);
+    })
     app.get("/hiring-talents/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -528,6 +538,8 @@ async function run() {
       const UsersCount = await hiringTalentCollection.countDocuments();
       res.send({ result, UsersCount });
     });
+
+    
 
     //
     //
@@ -709,9 +721,12 @@ async function run() {
     });
 
     // ---------------------- Admin Dashboard ------------------------
-
+    app.get('/users',async(req,res)=>{
+      const result = await  userCollection.find().toArray();
+    res.send(result);
+    })
     // pagination for user list
-
+    
     app.get("/users/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -778,6 +793,11 @@ async function run() {
       });
     });
 
+
+    app.get('/payments',async(req,res)=>{
+      const result = await  UserPaymentCollection.find().toArray();
+    res.send(result);
+    })
     // pagination added in Premium User list
     app.get("/payments/pagination", async (req, res) => {
       const query = req.query;
