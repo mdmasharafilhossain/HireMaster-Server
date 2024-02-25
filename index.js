@@ -19,8 +19,11 @@ app.use(
     credentials: true,
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
+
+
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
@@ -58,6 +61,9 @@ const verifyToken = async (req, res, next) => {
     next();
   });
 };
+
+
+// cloudinary image upload
 
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
@@ -98,6 +104,34 @@ async function run() {
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+    const jobFairEventCollection = client
+      .db("HireMaster")
+      .collection("Fair-events");
+
+    // -----------------JWT----------------------
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          // secure: true,
+          // sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -215,7 +249,11 @@ async function run() {
       res.send(result);
     });
 
+
     // ------------------Show Applied Jobs-----------------
+
+ 
+
     app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
       console.log(req.query.email);
       console.log("token owner info", req.cookies.token);
@@ -318,14 +356,101 @@ async function run() {
         res.send(result);
       }
     });
+    // --------------User Profile------------------
 
-    app.patch("/UsersProfile/:id", async (req, res) => {
+    app.patch("/UsersProfile/education/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-          UniversityName: item.UniversityName,
+          educationInstitute: item.educationInstitute,
+            degree:item.degree,
+            studyField:item.studyField,
+            educationStartMonth:item.educationStartMonth,
+            educationStartYear:item.educationStartYear,
+            educationEndMonth:item.educationEndMonth,
+            educationEndYear:item.educationEndYear,
+            educationDescription:item.educationDescription
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+            name: item.name,
+            UniversityName:item.UniversityName,
+            headline:item.headline,
+            location:item.location,
+            linkedin:item.linkedin,
+            portfolio:item.portfolio,
+            github:item.github,
+            aboutDescription:item.aboutDescription,
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/photo/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+            photo:item.photo
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/projects/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          projectName: item.projectName,
+          projectLink: item.projectLink,
+          technologies: item.technologies,
+          projectStartMonth: item.projectStartMonth,
+          projectStartYear: item.projectStartYear,
+          projectEndMonth: item.projectEndMonth,
+          projectEndYear: item.projectEndYear,
+          projectDescription: item.projectDescription,
+
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/experience/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          jobTitle: item.jobTitle,
+            jobType: item.jobType,
+            JobType: item.JobType,
+            companyName: item.companyName,
+            jobLocation: item.jobLocation,
+            jobStartMonth: item.jobStartMonth,
+            jobStartYear: item.jobStartYear,
+            jobEndMonth: item.jobEndMonth,
+            jobEndYear: item.jobEndYear,
+            jobDescription: item.jobDescription,
+
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -342,6 +467,283 @@ async function run() {
       res.send(await userCollection.insertOne(user));
       // console.log(user);
     });
+
+
+    app.post("/subscribers", async (req, res) => {
+      const subscriber = req.body;
+      const query = { email: subscriber.email };
+      const isExist = await subscriberCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "subscriber already exists" });
+      }
+      res.send(await subscriberCollection.insertOne(subscriber));
+      // console.log(user);
+    });
+
+    //
+    //
+    //
+    // tech news routes
+    //
+    app.post("/tech-news", async (req, res) => {
+      const newsData = req.body;
+      const slug = slugify(req.body.title);
+
+      const isExisting = await newsCollection.findOne({ slug });
+      if (isExisting) {
+        return res.status(400).send({ error: "News title must be unique" });
+      }
+      newsData.slug = slug.toLowerCase();
+      try {
+        const result = await newsCollection.insertOne(newsData);
+        res.json(result);
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/tech-news", async (req, res) => {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 2;
+      const skip = (page - 1) * limit;
+      const news = await newsCollection
+        .find({})
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+      const totalNewsCount = await newsCollection.countDocuments();
+      res.json({
+        news,
+        totalNewsCount,
+        currentPage: page,
+        itemsPerPage: limit,
+      });
+    });
+
+    app.get("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      // console.log(slug);
+      try {
+        const result = await newsCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.delete("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      try {
+        const result = await newsCollection.findOneAndDelete({ slug });
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch("/tech-news/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      const newSlug = slugify(req.body.title);
+      const newNews = req.body;
+      newNews.slug = newSlug.toLowerCase();
+
+      try {
+        const result = await newsCollection.findOneAndUpdate(
+          {
+            slug,
+          },
+          { $set: newNews }
+        );
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.post("/hiring-talents", async (req, res) => {
+      const user = req.body;
+      const query = { email: user.email };
+      const isExist = await userCollection.findOne(query);
+      if (isExist) {
+        return res.send({ status: "user already exists" });
+      }
+      res.send(await userCollection.insertOne(user));
+      // console.log(user);
+    });
+
+    app.get("/subscribers", async (req, res) => {
+      res.json(await subscriberCollection.find({}).toArray());
+    });
+    //--------------Pagination on Hiring Manager List----------------
+    app.get("/hiring-talents/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = hiringTalentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await hiringTalentCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
+
+    //
+    //
+    // Fair registration routes
+    //
+    //
+
+    app.post("/fair-registration", async (req, res) => {
+      const register = req.body;
+      const query = { email: register.email };
+      const isRegistered = await jobFairUserCollection.findOne(query);
+
+      try {
+        if (isRegistered) {
+          return res.send({ status: "Already registered" });
+        }
+        const result = await jobFairUserCollection.insertOne(register);
+        res.json(result);
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/fair-registration", async (req, res) => {
+      res.json(await jobFairUserCollection.find({}).toArray());
+    });
+
+    app.get("/fair-registration/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await jobFairUserCollection.findOne({ email });
+        res.json(result);
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch("/fair-registration/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedUser = req.body;
+      const updatedDoc = {
+        $set: {
+          fullname: updatedUser.fullname,
+          profilePicture: updatedUser.profilePicture,
+        },
+      };
+      const result = await jobFairUserCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.json(result);
+    });
+
+    app.post("/job-fair/events", async (req, res) => {
+      const event = req.body;
+      const slug = slugify(req.body.title);
+      const isExisting = await jobFairEventCollection.findOne({ slug });
+      if (isExisting) {
+        return res.status(400).send({ error: "Event title must be unique" });
+      }
+      event.slug = slug.toLowerCase();
+      try {
+        res.json(await jobFairEventCollection.insertOne(event));
+      } catch (error) {
+        console.error("Error inserting event:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/job-fair/events", async (req, res) => {
+      res.json(await jobFairEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/events/:slug", async (req, res) => {
+      const slug = req.params.slug;
+      // console.log(slug);
+      try {
+        const result = await jobFairEventCollection.findOne({ slug });
+        if (result) {
+          res.json(result);
+        } else {
+          res.status(404).send({ error: "Event not found" });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/job-fair/profile/sponsor-event/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await jobFairEventCollection
+          .find({
+            sponsor_email: email,
+          })
+          .toArray();
+        res.json(result);
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.delete("/job-fair/profile/sponsor-event/:slug", async (req, res) => {
+      const slug = req.params.slug;
+
+      try {
+        const result = await jobFairEventCollection.findOneAndDelete({ slug });
+        // if (result.deletedCount > 0) res.json(result);
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "Event not removed." });
+        }
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch(
+      "/job-fair/profile/sponsor-event/update/:slug",
+      async (req, res) => {
+        const slug = req.params.slug;
+        const newSlug = slugify(req.body.title);
+        const newEvent = req.body;
+        newEvent.slug = newSlug.toLowerCase();
+
+        try {
+          const result = await jobFairEventCollection.findOneAndUpdate(
+            {
+              slug,
+            },
+            { $set: newEvent }
+          );
+          if (result) res.json(result);
+          else {
+            res.status(404).send({ error: "Event not found" });
+          }
+        } catch (error) {
+          res.status(500).send({ error: "Internal Server Error" });
+        }
+      }
+    );
 
     // ---------------------- Admin Dashboard ------------------------
 
@@ -535,10 +937,32 @@ async function run() {
       });
     });
 
+    // pagination added in Premium User list
+    app.get("/payments/pagination", async (req, res) => {
+      const query = req.query;
+      const page = query.page;
+      console.log(page);
+      const pageNumber = parseInt(page);
+      const perPage = 4;
+      const skip = pageNumber * perPage;
+      const users = UserPaymentCollection.find().skip(skip).limit(perPage);
+      const result = await users.toArray();
+      const UsersCount = await UserPaymentCollection.countDocuments();
+      res.send({ result, UsersCount });
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
+    });
+
+    // premium user delete
+    app.delete("/payments/PremiumUser/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await UserPaymentCollection.deleteOne(query);
+      res.send(result);
     });
 
     //
@@ -565,13 +989,14 @@ async function run() {
     };
 
     exports.remove = (req, res) => {
+      const removed = req.body;
       const image_id = req.body.public_id;
       cloudinary.uploader.destroy(image_id, (err) => {
         if (err) {
           console.error("Error deleting image:", err);
           return res.status(500).json({ error: "Internal Server Error" });
         }
-        res.send({ message: "Image deleted successfully!" });
+        res.send({ removed, message: "Image deleted successfully!" });
       });
     };
 
