@@ -128,7 +128,31 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
-    //  UserProfileCollection
+    // -----------------JWT----------------------
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          // secure: true,
+          // sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+    //  ---------UserProfileCollection------------
 
     app.post("/userProfile", async (req, res) => {
       const feedbacks = req.body;
@@ -206,14 +230,31 @@ async function run() {
       res.send(result);
     });
 
-    //Applied Jobs
+    //----------------------Applied Jobs--------------------
     app.post("/users-appliedjobs", async (req, res) => {
-      const appliedjobs = req.body;
-      console.log(appliedjobs);
-      const result = await appliedJobCollection.insertOne(appliedjobs);
+      const appliedJob = req.body;
+      console.log(appliedJob);
+      const userEmail = appliedJob.email;
+      const jobId = appliedJob.job_id;
+      const existingApplication = await appliedJobCollection.findOne({
+        email: userEmail,
+        job_id: jobId,
+      });
+
+      if (existingApplication) {
+        console.log("here");
+        return res.send({
+          message: "Already applied.",
+          insertedId: null,
+        });
+      }
+
+      const result = await appliedJobCollection.insertOne(appliedJob);
       res.send(result);
     });
-    // Show Applied Jobs
+
+    // ------------------Show Applied Jobs-----------------
+
     app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
       console.log(req.query.email);
       console.log("token owner info", req.cookies.token);
@@ -226,6 +267,36 @@ async function run() {
       }
       const result = await appliedJobCollection.find(query).toArray();
       res.send(result);
+    });
+
+    app.delete("/showapplied-jobs/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = {
+        email: email,
+      };
+      try {
+        const result = await appliedJobCollection.deleteOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting application:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    // app.get("/applied-jobs-from-manager/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   console.log(email);
+    //   const query = { hiring_manager_email: email };
+    //   const result = await appliedJobCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
+    app.get("/notifications/:email", async (req, res) => {
+      const email = req.params.email;
+      const applications = await appliedJobCollection
+        .find({ hiring_manager_email: email })
+        .toArray();
+      res.send(applications);
     });
 
     app.get("/singleappliedjobs/:email", async (req, res) => {
@@ -241,11 +312,7 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
+
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -758,6 +825,46 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     });
+
+    app.post("/hiring-talents", async (req, res) => {
+      const hirer = req.body;
+      // console.log(hirer);
+      const result = await hiringTalentCollection.insertOne(hirer);
+      res.send(result);
+    });
+
+    app.get("/users", async (req, res) => {
+      res.json(await userCollection.find({}).toArray());
+    });
+    app.get("/hiring-talents", async (req, res) => {
+      res.json(await hiringTalentCollection.find({}).toArray());
+    });
+
+    app.post("/fair-registration", async (req, res) => {
+      const register = req.body;
+      const query = { email: register.email };
+      const isRegistered = await jobFairUserCollection.findOne(query);
+
+      try {
+        if (isRegistered) {
+          return res.send({ status: " Already registered." });
+        }
+        const result = await jobFairUserCollection.insertOne(register);
+        if (result) res.json(result);
+        else {
+          res.status(404).send({ error: "News not found" });
+        }
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/fair-registration", async (req, res) => {
+      res.json(await jobFairUserCollection.find({}).toArray());
+    });
+
+    // ---------------------- Admin Dashboard ------------------------
 
     // ------------------Stripe Payment--------------------
 
