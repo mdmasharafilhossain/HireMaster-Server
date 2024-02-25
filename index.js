@@ -96,10 +96,10 @@ async function run() {
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
-      const userReportCollection = client
+    const userReportCollection = client
       .db("HireMaster")
       .collection("UserReport");
-      const premiumUserCourseCollection = client
+    const premiumUserCourseCollection = client
       .db("HireMaster")
       .collection("Course");
 
@@ -142,6 +142,7 @@ async function run() {
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
+
     // app.get("/userProfile/:email", async (req, res) => {
     //   const email = req.params.email;
     //   const query = {
@@ -298,13 +299,13 @@ async function run() {
       const updatedDoc = {
         $set: {
           educationInstitute: item.educationInstitute,
-            degree:item.degree,
-            studyField:item.studyField,
-            educationStartMonth:item.educationStartMonth,
-            educationStartYear:item.educationStartYear,
-            educationEndMonth:item.educationEndMonth,
-            educationEndYear:item.educationEndYear,
-            educationDescription:item.educationDescription
+          degree: item.degree,
+          studyField: item.studyField,
+          educationStartMonth: item.educationStartMonth,
+          educationStartYear: item.educationStartYear,
+          educationEndMonth: item.educationEndMonth,
+          educationEndYear: item.educationEndYear,
+          educationDescription: item.educationDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -317,15 +318,14 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-            name: item.name,
-            UniversityName:item.UniversityName,
-            headline:item.headline,
-            location:item.location,
-            linkedin:item.linkedin,
-            portfolio:item.portfolio,
-            github:item.github,
-            aboutDescription:item.aboutDescription,
-
+          name: item.name,
+          UniversityName: item.UniversityName,
+          headline: item.headline,
+          location: item.location,
+          linkedin: item.linkedin,
+          portfolio: item.portfolio,
+          github: item.github,
+          aboutDescription: item.aboutDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -338,8 +338,7 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-            photo:item.photo
-
+          photo: item.photo,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -360,7 +359,6 @@ async function run() {
           projectEndMonth: item.projectEndMonth,
           projectEndYear: item.projectEndYear,
           projectDescription: item.projectDescription,
-
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -374,22 +372,20 @@ async function run() {
       const updatedDoc = {
         $set: {
           jobTitle: item.jobTitle,
-            jobType: item.jobType,
-            JobType: item.JobType,
-            companyName: item.companyName,
-            jobLocation: item.jobLocation,
-            jobStartMonth: item.jobStartMonth,
-            jobStartYear: item.jobStartYear,
-            jobEndMonth: item.jobEndMonth,
-            jobEndYear: item.jobEndYear,
-            jobDescription: item.jobDescription,
-
+          jobType: item.jobType,
+          JobType: item.JobType,
+          companyName: item.companyName,
+          jobLocation: item.jobLocation,
+          jobStartMonth: item.jobStartMonth,
+          jobStartYear: item.jobStartYear,
+          jobEndMonth: item.jobEndMonth,
+          jobEndYear: item.jobEndYear,
+          jobDescription: item.jobDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
-
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -678,6 +674,40 @@ async function run() {
       }
     );
 
+    //
+    //
+    // fair event bookings
+    //
+    //
+
+    app.post("/job-fair/event-bookings", async (req, res) => {
+      const { slug, email } = req.body;
+
+      try {
+        const existingBooking = await jobFairEventBookingCollection.findOne({
+          slug: slug,
+          email: email,
+        });
+        if (existingBooking) {
+          return res
+            .status(400)
+            .json({ message: "You have already booked this event." });
+        }
+        const newBooking = { slug: slug, email: email };
+        const result = await jobFairEventBookingCollection.insertOne(
+          newBooking
+        );
+        res.status(201).json({ result, message: "Event booked successfully." });
+      } catch (error) {
+        console.error("Error booking event:", error);
+        res.status(500).json({ message: "Failed to book event." });
+      }
+    });
+
+    app.get("/job-fair/event-bookings", async (req, res) => {
+      res.json(await jobFairEventBookingCollection.find({}).toArray());
+    });
+
     // ---------------------- Admin Dashboard ------------------------
 
     // pagination for user list
@@ -762,15 +792,11 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
-
-    app.get('/payments',async(req,res)=>{
+    app.get("/payments", async (req, res) => {
       const cursor = UserPaymentCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
-  })
-
-
-
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
     app.post("/payments", async (req, res) => {
       const payment = req.body;
@@ -786,32 +812,25 @@ async function run() {
       res.send(result);
     });
 
-
-    // user report section 
+    // user report section
     app.post("/userreport", async (req, res) => {
       const report = req.body;
       const result = await userReportCollection.insertOne(report);
       res.send(result);
     });
 
-    app.get('/userreport',async(req,res)=>{
+    app.get("/userreport", async (req, res) => {
       const cursor = userReportCollection.find();
-        const result = await cursor.toArray();
-        res.send(result);
-  })
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
-
-
-    // Premium User Course Section 
+    // Premium User Course Section
     app.post("/premiumusercourse", async (req, res) => {
       const course = req.body;
       const result = await premiumUserCourseCollection.insertOne(course);
       res.send(result);
     });
-
-
-
-
 
     //
     // cloudinary
