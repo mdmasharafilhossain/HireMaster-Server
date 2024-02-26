@@ -105,6 +105,9 @@ async function run() {
     const jobFairEventBookingCollection = client
       .db("HireMaster")
       .collection("Event-bookings");
+    const jobFairInterestedEventCollection = client
+      .db("HireMaster")
+      .collection("Interested-events");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -826,6 +829,82 @@ async function run() {
           });
           if (result.deletedCount === 0) {
             return res.status(404).json({ message: "Booking not found." });
+          }
+          res.json(result);
+        } catch (error) {
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
+    app.post("/job-fair/interested-events", async (req, res) => {
+      const { slug, email } = req.body;
+
+      try {
+        const existingInterest = await jobFairInterestedEventCollection.findOne(
+          {
+            slug: slug,
+            email: email,
+          }
+        );
+        if (existingInterest) {
+          return res.status(400).json({
+            message: "You have already added this event as interested.",
+          });
+        }
+        const newInterest = { slug: slug, email: email };
+        const result = await jobFairInterestedEventCollection.insertOne(
+          newInterest
+        );
+        res
+          .status(201)
+          .json({ result, message: "Added to interested event successfully." });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to add event as interested." });
+      }
+    });
+
+    app.get("/job-fair/interested-events", async (req, res) => {
+      res.json(await jobFairInterestedEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/job-seeker/interested-events", async (req, res) => {
+      const { email } = req.query;
+      // console.log(email);
+      try {
+        const interests = await jobFairInterestedEventCollection
+          .find({ email: email })
+          .toArray();
+        // console.log(interests);
+        let interestedEvents = [];
+        for (const interest of interests) {
+          const event = await jobFairEventCollection.findOne({
+            slug: interest.slug,
+          });
+
+          interestedEvents.push(event);
+        }
+        res.json(interestedEvents);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.delete(
+      "/job-fair/job-seeker/interested-events/remove",
+      async (req, res) => {
+        const { slug, email } = req.body;
+        // console.log(slug, email);
+        // console.log(req.body);
+        try {
+          const result = await jobFairInterestedEventCollection.deleteOne({
+            slug: slug,
+            email: email,
+          });
+          if (result.deletedCount === 0) {
+            return res
+              .status(404)
+              .json({ message: "Interested event not found." });
           }
           res.json(result);
         } catch (error) {
