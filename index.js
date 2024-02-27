@@ -14,8 +14,8 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      // 'https://hiremaster.netlify.app',
+      // "http://localhost:5173",
+      'https://hiremaster.netlify.app',
     ],
     credentials: true,
   })
@@ -1021,10 +1021,10 @@ async function run() {
         total_amount: req.body.amount,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `http://localhost:5000/payment-success/${tran_id}`,
-        fail_url: `http://localhost:5000/payment-fail/${tran_id}`,
-        cancel_url: "http://localhost:3030/cancel",
-        ipn_url: "http://localhost:3030/ipn",
+        success_url: `https://hiremaster.netlify.app/payment-success/${tran_id}`,
+        fail_url: `https://hiremaster.netlify.app/payment-fail/${tran_id}`,
+        cancel_url: "https://hiremaster.netlify.app/cancel",
+        ipn_url: "https://hiremaster.netlify.app/ipn",
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -1078,7 +1078,7 @@ async function run() {
         );
         if (result.modifiedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment-success/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-success/${req.params.tranId}`
           );
         }
       });
@@ -1089,7 +1089,7 @@ async function run() {
         });
         if (result.deletedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment-fail/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-fail/${req.params.tranId}`
           );
         }
       });
