@@ -10,12 +10,18 @@ const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
+
+const client_URL = "http://localhost:5173";
+const server_URL = "http://localhost:5000";
+
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
+
 // middleware
 app.use(
   cors({
     origin: [
-      "http://localhost:5173",
-      // 'https://hiremaster.netlify.app',
+      client_URL,
     ],
     credentials: true,
   })
@@ -1050,10 +1056,10 @@ async function run() {
         total_amount: req.body.amount,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://hire-master-server.vercel.app/payment-success/${tran_id}`,
-        fail_url: `https://hire-master-server.vercel.app/${tran_id}`,
-        cancel_url: "https://hire-master-server.vercel.app/cancel",
-        ipn_url: "https://hire-master-server.vercel.app/ipn",
+        success_url: `${server_URL}/payment-success/${tran_id}`,
+        fail_url: `${server_URL}/${tran_id}`,
+        cancel_url: `${server_URL}/cancel`,
+        ipn_url: `${server_URL}/ipn`,
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -1107,7 +1113,7 @@ async function run() {
         );
         if (result.modifiedCount > 0) {
           res.redirect(
-            `https://hiremaster.netlify.app/payment-success/${req.params.tranId}`
+            `${client_URL}/payment-success/${req.params.tranId}`
           );
         }
       });
@@ -1118,7 +1124,7 @@ async function run() {
         });
         if (result.deletedCount > 0) {
           res.redirect(
-            `https://hiremaster.netlify.app/payment-fail/${req.params.tranId}`
+            `${client_URL}/payment-fail/${req.params.tranId}`
           );
         }
       });
