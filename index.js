@@ -774,19 +774,18 @@ async function run() {
     //
 
     app.post("/job-fair/event-bookings", async (req, res) => {
-      const { slug, email } = req.body;
-
+      const { slug, fairUser } = req.body;
       try {
         const existingBooking = await jobFairEventBookingCollection.findOne({
           slug: slug,
-          email: email,
+          "fairUser.email": fairUser.email,
         });
         if (existingBooking) {
           return res
             .status(400)
             .json({ message: "You have already booked this event." });
         }
-        const newBooking = { slug: slug, email: email };
+        const newBooking = { slug, fairUser };
         const result = await jobFairEventBookingCollection.insertOne(
           newBooking
         );
@@ -805,7 +804,7 @@ async function run() {
       const { email } = req.query;
       try {
         const bookings = await jobFairEventBookingCollection
-          .find({ email: email })
+          .find({ "fairUser.email": email })
           .toArray();
         let events = [];
         for (const booking of bookings) {
@@ -821,8 +820,10 @@ async function run() {
       }
     });
 
-    app.get("/job-fair/sponsor-event-bookings", async (req, res) => {
-      const { email } = req.query;
+    app.get("/job-fair/sponsor-event-bookings/:email", async (req, res) => {
+      const email = req.params.email;
+
+      // console.log("sponsor email", email);
       try {
         const events = await jobFairEventCollection
           .find({
@@ -833,12 +834,14 @@ async function run() {
         let bookedEvents = [];
 
         for (const event of events) {
-          const bookings = await jobFairEventBookingCollection.findOne({
-            slug: event.slug,
-          });
+          const bookings = await jobFairEventBookingCollection
+            .find({
+              slug: event.slug,
+            })
+            .toArray();
 
-          if (bookings) {
-            bookedEvents.push(bookings);
+          if (bookings && bookings.length > 0) {
+            bookedEvents = bookedEvents.concat(bookings.flat());
           }
         }
         res.json(bookedEvents);
@@ -856,7 +859,7 @@ async function run() {
         try {
           const result = await jobFairEventBookingCollection.deleteOne({
             slug: slug,
-            email: email,
+            "fairUser.email": email,
           });
           if (result.deletedCount === 0) {
             return res.status(404).json({ message: "Booking not found." });
