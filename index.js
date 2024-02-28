@@ -14,8 +14,8 @@ const port = process.env.PORT || 5000;
 app.use(
   cors({
     origin: [
-      // "http://localhost:5173",
-      'https://hiremaster.netlify.app',
+      "http://localhost:5173",
+      // 'https://hiremaster.netlify.app',
     ],
     credentials: true,
   })
@@ -57,7 +57,6 @@ const verifyToken = async (req, res, next) => {
     next();
   });
 };
-
 
 // cloudinary image upload
 cloudinary.config({
@@ -822,6 +821,32 @@ async function run() {
       }
     });
 
+    app.get("/job-fair/sponsor-event-bookings", async (req, res) => {
+      const { email } = req.query;
+      try {
+        const events = await jobFairEventCollection
+          .find({
+            sponsor_email: email,
+          })
+          .toArray();
+
+        let bookedEvents = [];
+
+        for (const event of events) {
+          const bookings = await jobFairEventBookingCollection.findOne({
+            slug: event.slug,
+          });
+
+          if (bookings) {
+            bookedEvents.push(bookings);
+          }
+        }
+        res.json(bookedEvents);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
     app.delete(
       "/job-fair/job-seeker/event-bookings/remove",
       async (req, res) => {
@@ -1049,7 +1074,7 @@ async function run() {
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then((apiResponse) => {
+      sslcz.init(data).then(apiResponse => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
