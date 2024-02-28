@@ -3,32 +3,32 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
-// const jwt = require("jsonwebtoken");
-// const cookieParser = require("cookie-parser");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
+
+const client_URL = "http://localhost:5173";
+const server_URL = "http://localhost:5000";
+
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
+
 // middleware
 app.use(
-
-  cors(
-  //   {
-  //   origin: [
-  //     "http://localhost:5173",
-  //     'https://hiremaster.netlify.app',
-  //   ],
-  //   credentials: true,
-  // }
-  )
+  cors({
+    origin: [
+      client_URL,
+    ],
+    credentials: true,
+  })
 );
 
 app.use(express.json());
-// app.use(cookieParser());
-
-
-
+app.use(cookieParser());
 
 // app.use(express.json({ extended: true, limit: "25mb" }));
 // app.use(express.urlencoded({ extended: true, limit: "25mb" }));
@@ -49,24 +49,24 @@ const store_passwd = process.env.STORE_PASS;
 const is_live = false; //true for live, false for sandbox
 
 // ----------------middleware----------------------
-// const logger = async (req, res, next) => {
-//   console.log("called", req.hostname, req.originalUrl);
-//   next();
-// };
+const logger = async (req, res, next) => {
+  console.log("called", req.hostname, req.originalUrl);
+  next();
+};
 
-// const verifyToken = async (req, res, next) => {
-//   const token = req.cookies?.token;
-//   if (!token) {
-//     return res.status(401).send({ message: "unauthorized access" });
-//   }
-//   jwt.verify(token, process.env.JWT_ACCESS_TOKEN, (err, decoded) => {
-//     if (err) {
-//       return res.status(401).send({ message: "unauthorized access" });
-//     }
-//     req.user = decoded;
-//     next();
-//   });
-// };
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.JWT_ACCESS_TOKEN, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 // cloudinary image upload
 // cloudinary.config({
@@ -125,30 +125,54 @@ async function run() {
       .collection("Interested-events");
 
     // -----------------JWT----------------------
-    // app.post("/jwt", logger, async (req, res) => {
-    //   const user = req.body;
-    //   console.log("user for token", user);
-    //   const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-    //     expiresIn: "1h",
-    //   });
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
 
-    //   res
-    //     .cookie("token", token, {
-    //       httpOnly: true,
-    //       secure: false,
-    //       sameSite: "strict",
-    //       secure: true,
-    //       sameSite: "none",
-    //     })
-    //     .send({ success: true });
-    // });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          // secure: true,
+          // sameSite: "none",
+        })
+        .send({ success: true });
+    });
 
-    // app.post("/logout", async (req, res) => {
-    //   const user = req.body;
-    //   console.log("logging out", user);
-    //   res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    // });
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
 
+    // -----------------JWT----------------------
+    app.post("/jwt", logger, async (req, res) => {
+      const user = req.body;
+      console.log("user for token", user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          // secure: true,
+          // sameSite: "none",
+        })
+        .send({ success: true });
+    });
+
+    app.post("/logout", async (req, res) => {
+      const user = req.body;
+      console.log("logging out", user);
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
     //  ---------UserProfileCollection------------
 
     app.post("/userProfile", async (req, res) => {
@@ -252,25 +276,19 @@ async function run() {
 
     // ------------------Show Applied Jobs-----------------
 
-
- 
-
-    // app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
-    //   console.log(req.query.email);
-    //   console.log("token owner info", req.cookies.token);
-    //   if (req.user.email !== req.query.email) {
-    //     return res.status(403).send({ message: "forbidden access" });
-    //   }
-    //   let query = {};
-    //   if (req.query?.email) {
-    //     query = { email: req.query.email };
-    //   }
-    //   const result = await appliedJobCollection.find(query).toArray();
-    //   res.send(result);
-    // });
-
-
-
+    app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
+      console.log(req.query.email);
+      console.log("token owner info", req.cookies.token);
+      if (req.user.email !== req.query.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query.email };
+      }
+      const result = await appliedJobCollection.find(query).toArray();
+      res.send(result);
+    });
 
     app.delete("/showapplied-jobs/:email", async (req, res) => {
       const email = req.params.email;
@@ -1038,10 +1056,10 @@ async function run() {
         total_amount: req.body.amount,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `https://hire-master-server.vercel.app/payment-success/${tran_id}`,
-        fail_url: `https://hire-master-server.vercel.app/${tran_id}`,
-        cancel_url: "https://hire-master-server.vercel.app/cancel",
-        ipn_url: "https://hire-master-server.vercel.app/ipn",
+        success_url: `${server_URL}/payment-success/${tran_id}`,
+        fail_url: `${server_URL}/${tran_id}`,
+        cancel_url: `${server_URL}/cancel`,
+        ipn_url: `${server_URL}/ipn`,
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -1061,12 +1079,12 @@ async function run() {
         ship_add2: "Dhaka",
         ship_city: "Dhaka",
         ship_state: "Dhaka",
-         ship_postcode: 1000,
+        ship_postcode: 1000,
         ship_country: "Bangladesh",
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then(apiResponse => {
+      sslcz.init(data).then((apiResponse) => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
@@ -1095,7 +1113,7 @@ async function run() {
         );
         if (result.modifiedCount > 0) {
           res.redirect(
-            `https://hiremaster.netlify.app/payment-success/${req.params.tranId}`
+            `${client_URL}/payment-success/${req.params.tranId}`
           );
         }
       });
@@ -1106,7 +1124,7 @@ async function run() {
         });
         if (result.deletedCount > 0) {
           res.redirect(
-            `https://hiremaster.netlify.app/payment-fail/${req.params.tranId}`
+            `${client_URL}/payment-fail/${req.params.tranId}`
           );
         }
       });
