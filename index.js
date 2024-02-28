@@ -20,6 +20,7 @@ app.use(
     credentials: true,
   })
 );
+app.use(cookieParser())
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
