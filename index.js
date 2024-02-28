@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 // middleware
 app.use(
@@ -22,7 +23,6 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
-
 
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
@@ -62,9 +62,7 @@ const verifyToken = async (req, res, next) => {
   });
 };
 
-
 // cloudinary image upload
-
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_KEY,
@@ -107,6 +105,18 @@ async function run() {
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
+    const userReportCollection = client
+      .db("HireMaster")
+      .collection("UserReport");
+    const premiumUserCourseCollection = client
+      .db("HireMaster")
+      .collection("Course");
+    const jobFairEventBookingCollection = client
+      .db("HireMaster")
+      .collection("Event-bookings");
+    const jobFairInterestedEventCollection = client
+      .db("HireMaster")
+      .collection("Interested-events");
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -171,6 +181,15 @@ async function run() {
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
+
+    // app.get("/userProfile/:email", async (req, res) => {
+    //   const email = req.params.email;
+    //   const query = {
+    //     email: email,
+    //   };
+    //   const result = await UsersProfileCollection.findOne(query);
+    //   res.send(result);
+    // });
 
     app.post("/jobpost", async (req, res) => {
       const job = req.body;
@@ -249,10 +268,7 @@ async function run() {
       res.send(result);
     });
 
-
     // ------------------Show Applied Jobs-----------------
-
- 
 
     app.get("/showapplied-jobs", logger, verifyToken, async (req, res) => {
       console.log(req.query.email);
@@ -312,6 +328,16 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/staticjobpost", async (req, res) => {
+    //   const cursor = staticCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     app.get("/staticjobpost/:id", async (req, res) => {
       const id = req.params.id;
       const query = {
@@ -365,13 +391,13 @@ async function run() {
       const updatedDoc = {
         $set: {
           educationInstitute: item.educationInstitute,
-            degree:item.degree,
-            studyField:item.studyField,
-            educationStartMonth:item.educationStartMonth,
-            educationStartYear:item.educationStartYear,
-            educationEndMonth:item.educationEndMonth,
-            educationEndYear:item.educationEndYear,
-            educationDescription:item.educationDescription
+          degree: item.degree,
+          studyField: item.studyField,
+          educationStartMonth: item.educationStartMonth,
+          educationStartYear: item.educationStartYear,
+          educationEndMonth: item.educationEndMonth,
+          educationEndYear: item.educationEndYear,
+          educationDescription: item.educationDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -384,15 +410,14 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-            name: item.name,
-            UniversityName:item.UniversityName,
-            headline:item.headline,
-            location:item.location,
-            linkedin:item.linkedin,
-            portfolio:item.portfolio,
-            github:item.github,
-            aboutDescription:item.aboutDescription,
-
+          name: item.name,
+          UniversityName: item.UniversityName,
+          headline: item.headline,
+          location: item.location,
+          linkedin: item.linkedin,
+          portfolio: item.portfolio,
+          github: item.github,
+          aboutDescription: item.aboutDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -405,8 +430,7 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const updatedDoc = {
         $set: {
-            photo:item.photo
-
+          photo: item.photo,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -427,7 +451,6 @@ async function run() {
           projectEndMonth: item.projectEndMonth,
           projectEndYear: item.projectEndYear,
           projectDescription: item.projectDescription,
-
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -441,16 +464,15 @@ async function run() {
       const updatedDoc = {
         $set: {
           jobTitle: item.jobTitle,
-            jobType: item.jobType,
-            JobType: item.JobType,
-            companyName: item.companyName,
-            jobLocation: item.jobLocation,
-            jobStartMonth: item.jobStartMonth,
-            jobStartYear: item.jobStartYear,
-            jobEndMonth: item.jobEndMonth,
-            jobEndYear: item.jobEndYear,
-            jobDescription: item.jobDescription,
-
+          jobType: item.jobType,
+          JobType: item.JobType,
+          companyName: item.companyName,
+          jobLocation: item.jobLocation,
+          jobStartMonth: item.jobStartMonth,
+          jobStartYear: item.jobStartYear,
+          jobEndMonth: item.jobEndMonth,
+          jobEndYear: item.jobEndYear,
+          jobDescription: item.jobDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -467,7 +489,6 @@ async function run() {
       res.send(await userCollection.insertOne(user));
       // console.log(user);
     });
-
 
     app.post("/subscribers", async (req, res) => {
       const subscriber = req.body;
@@ -575,18 +596,23 @@ async function run() {
     app.post("/hiring-talents", async (req, res) => {
       const user = req.body;
       const query = { email: user.email };
-      const isExist = await userCollection.findOne(query);
+      const isExist = await hiringTalentCollection.findOne(query);
       if (isExist) {
         return res.send({ status: "user already exists" });
       }
-      res.send(await userCollection.insertOne(user));
+      res.send(await hiringTalentCollection.insertOne(user));
       // console.log(user);
     });
 
     app.get("/subscribers", async (req, res) => {
       res.json(await subscriberCollection.find({}).toArray());
     });
+
     //--------------Pagination on Hiring Manager List----------------
+    app.get("/hiring-talents", async (req, res) => {
+      const result = await hiringTalentCollection.find().toArray();
+      res.send(result);
+    });
     app.get("/hiring-talents/pagination", async (req, res) => {
       const query = req.query;
       const page = query.page;
@@ -745,8 +771,188 @@ async function run() {
       }
     );
 
-    // ---------------------- Admin Dashboard ------------------------
+    //
+    //
+    // fair event bookings
+    //
+    //
 
+    app.post("/job-fair/event-bookings", async (req, res) => {
+      const { slug, email } = req.body;
+
+      try {
+        const existingBooking = await jobFairEventBookingCollection.findOne({
+          slug: slug,
+          email: email,
+        });
+        if (existingBooking) {
+          return res
+            .status(400)
+            .json({ message: "You have already booked this event." });
+        }
+        const newBooking = { slug: slug, email: email };
+        const result = await jobFairEventBookingCollection.insertOne(
+          newBooking
+        );
+        res.status(201).json({ result, message: "Event booked successfully." });
+      } catch (error) {
+        console.error("Error booking event:", error);
+        res.status(500).json({ message: "Failed to book event." });
+      }
+    });
+
+    app.get("/job-fair/event-bookings", async (req, res) => {
+      res.json(await jobFairEventBookingCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/job-seeker/event-bookings", async (req, res) => {
+      const { email } = req.query;
+      try {
+        const bookings = await jobFairEventBookingCollection
+          .find({ email: email })
+          .toArray();
+        let events = [];
+        for (const booking of bookings) {
+          const event = await jobFairEventCollection.findOne({
+            slug: booking.slug,
+          });
+
+          events.push(event);
+        }
+        res.json(events);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.get("/job-fair/sponsor-event-bookings", async (req, res) => {
+      const { email } = req.query;
+      try {
+        const events = await jobFairEventCollection
+          .find({
+            sponsor_email: email,
+          })
+          .toArray();
+
+        let bookedEvents = [];
+
+        for (const event of events) {
+          const bookings = await jobFairEventBookingCollection.findOne({
+            slug: event.slug,
+          });
+
+          if (bookings) {
+            bookedEvents.push(bookings);
+          }
+        }
+        res.json(bookedEvents);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.delete(
+      "/job-fair/job-seeker/event-bookings/remove",
+      async (req, res) => {
+        const { slug, email } = req.body;
+        // console.log(slug, email);
+        // console.log(req.body);
+        try {
+          const result = await jobFairEventBookingCollection.deleteOne({
+            slug: slug,
+            email: email,
+          });
+          if (result.deletedCount === 0) {
+            return res.status(404).json({ message: "Booking not found." });
+          }
+          res.json(result);
+        } catch (error) {
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
+    app.post("/job-fair/interested-events", async (req, res) => {
+      const { slug, email } = req.body;
+
+      try {
+        const existingInterest = await jobFairInterestedEventCollection.findOne(
+          {
+            slug: slug,
+            email: email,
+          }
+        );
+        if (existingInterest) {
+          return res.status(400).json({
+            message: "You have already added this event as interested.",
+          });
+        }
+        const newInterest = { slug: slug, email: email };
+        const result = await jobFairInterestedEventCollection.insertOne(
+          newInterest
+        );
+        res
+          .status(201)
+          .json({ result, message: "Added to interested event successfully." });
+      } catch (error) {
+        res.status(500).json({ message: "Failed to add event as interested." });
+      }
+    });
+
+    app.get("/job-fair/interested-events", async (req, res) => {
+      res.json(await jobFairInterestedEventCollection.find({}).toArray());
+    });
+
+    app.get("/job-fair/job-seeker/interested-events", async (req, res) => {
+      const { email } = req.query;
+      // console.log(email);
+      try {
+        const interests = await jobFairInterestedEventCollection
+          .find({ email: email })
+          .toArray();
+        // console.log(interests);
+        let interestedEvents = [];
+        for (const interest of interests) {
+          const event = await jobFairEventCollection.findOne({
+            slug: interest.slug,
+          });
+
+          interestedEvents.push(event);
+        }
+        res.json(interestedEvents);
+      } catch (error) {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    });
+
+    app.delete(
+      "/job-fair/job-seeker/interested-events/remove",
+      async (req, res) => {
+        const { slug, email } = req.body;
+        // console.log(slug, email);
+        // console.log(req.body);
+        try {
+          const result = await jobFairInterestedEventCollection.deleteOne({
+            slug: slug,
+            email: email,
+          });
+          if (result.deletedCount === 0) {
+            return res
+              .status(404)
+              .json({ message: "Interested event not found." });
+          }
+          res.json(result);
+        } catch (error) {
+          res.status(500).json({ message: "Internal Server Error" });
+        }
+      }
+    );
+
+    // ---------------------- Admin Dashboard ------------------------
+    app.get("/users", async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
     // pagination for user list
 
     app.get("/users/pagination", async (req, res) => {
@@ -844,10 +1050,10 @@ async function run() {
         total_amount: req.body.amount,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `http://localhost:5000/payment-success/${tran_id}`,
-        fail_url: `http://localhost:5000/payment-fail/${tran_id}`,
-        cancel_url: "http://localhost:3030/cancel",
-        ipn_url: "http://localhost:3030/ipn",
+        success_url: `https://hire-master-server.vercel.app/payment-success/${tran_id}`,
+        fail_url: `https://hire-master-server.vercel.app/${tran_id}`,
+        cancel_url: "https://hire-master-server.vercel.app/cancel",
+        ipn_url: "https://hire-master-server.vercel.app/ipn",
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -901,7 +1107,7 @@ async function run() {
         );
         if (result.modifiedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment-success/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-success/${req.params.tranId}`
           );
         }
       });
@@ -912,7 +1118,7 @@ async function run() {
         });
         if (result.deletedCount > 0) {
           res.redirect(
-            `http://localhost:5173/payment-fail/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-fail/${req.params.tranId}`
           );
         }
       });
@@ -937,6 +1143,10 @@ async function run() {
       });
     });
 
+    app.get("/payments", async (req, res) => {
+      const result = await UserPaymentCollection.find().toArray();
+      res.send(result);
+    });
     // pagination added in Premium User list
     app.get("/payments/pagination", async (req, res) => {
       const query = req.query;
@@ -951,6 +1161,12 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
+    app.get("/payments", async (req, res) => {
+      const cursor = UserPaymentCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.post("/payments", async (req, res) => {
       const payment = req.body;
       const paymentResult = UserPaymentCollection.insertOne(payment);
@@ -962,6 +1178,32 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await UserPaymentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // user report section
+    app.post("/userreport", async (req, res) => {
+      const report = req.body;
+      const result = await userReportCollection.insertOne(report);
+      res.send(result);
+    });
+
+    app.get("/userreport", async (req, res) => {
+      const cursor = userReportCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // Premium User Course Section
+    app.post("/premiumusercourse", async (req, res) => {
+      const course = req.body;
+      const result = await premiumUserCourseCollection.insertOne(course);
+      res.send(result);
+    });
+
+    app.get("/premiumusercourse", async (req, res) => {
+      const cursor = premiumUserCourseCollection.find();
+      const result = await cursor.toArray();
       res.send(result);
     });
 
