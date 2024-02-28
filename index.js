@@ -1208,7 +1208,7 @@ async function run() {
 
     //
     // cloudinary
-    exports.upload = async (req, res) => {
+    app.post("/profile/imageUpload", async (req, res) => {
       try {
         let result = await cloudinary.uploader.upload(req.body.image, {
           public_id: `${Date.now()}`,
@@ -1227,9 +1227,8 @@ async function run() {
           error: "Internal Server Error",
         });
       }
-    };
-
-    exports.remove = (req, res) => {
+    });
+    app.post("/profile/imageRemove", (req, res) => {
       const removed = req.body;
       const image_id = req.body.public_id;
       cloudinary.uploader.destroy(image_id, err => {
@@ -1239,10 +1238,7 @@ async function run() {
         }
         res.send({ removed, message: "Image deleted successfully!" });
       });
-    };
-
-    app.post("/profile/imageUpload", exports.upload);
-    app.post("/profile/imageRemove", exports.remove);
+    });
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
