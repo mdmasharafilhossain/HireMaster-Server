@@ -1,5 +1,5 @@
 const express = require("express");
-// const cloudinary = require("cloudinary").v2;
+const cloudinary = require("cloudinary").v2;
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
@@ -11,17 +11,13 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-const client_URL = "http://localhost:5173";
-const server_URL = "http://localhost:5000";
-
-// const client_URL = "https://hiremaster.netlify.app";
-// const server_URL = "https://hire-master-server.vercel.app";
-
+const back_end_URL =
 // middleware
 app.use(
   cors({
     origin: [
-      client_URL,
+      "http://localhost:5173",
+      // 'https://hiremaster.netlify.app',
     ],
     credentials: true,
   })
@@ -30,8 +26,8 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-// app.use(express.json({ extended: true, limit: "25mb" }));
-// app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ extended: true, limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -69,11 +65,11 @@ const verifyToken = async (req, res, next) => {
 };
 
 // cloudinary image upload
-// cloudinary.config({
-//   cloud_name: process.env.CLOUD_NAME,
-//   api_key: process.env.CLOUD_KEY,
-//   api_secret: process.env.CLOUD_SECRET,
-// });
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
 
 async function run() {
   try {
@@ -1056,10 +1052,10 @@ async function run() {
         total_amount: req.body.amount,
         currency: "BDT",
         tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `${server_URL}/payment-success/${tran_id}`,
-        fail_url: `${server_URL}/${tran_id}`,
-        cancel_url: `${server_URL}/cancel`,
-        ipn_url: `${server_URL}/ipn`,
+        success_url: `https://hire-master-server.vercel.app/payment-success/${tran_id}`,
+        fail_url: `https://hire-master-server.vercel.app/${tran_id}`,
+        cancel_url: "https://hire-master-server.vercel.app/cancel",
+        ipn_url: "https://hire-master-server.vercel.app/ipn",
         shipping_method: "Courier",
         product_name: "Computer.",
         product_category: "Electronic",
@@ -1113,7 +1109,7 @@ async function run() {
         );
         if (result.modifiedCount > 0) {
           res.redirect(
-            `${client_URL}/payment-success/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-success/${req.params.tranId}`
           );
         }
       });
@@ -1124,7 +1120,7 @@ async function run() {
         });
         if (result.deletedCount > 0) {
           res.redirect(
-            `${client_URL}/payment-fail/${req.params.tranId}`
+            `https://hiremaster.netlify.app/payment-fail/${req.params.tranId}`
           );
         }
       });
@@ -1215,41 +1211,41 @@ async function run() {
 
     //
     // cloudinary
-    // exports.upload = async (req, res) => {
-    //   try {
-    //     let result = await cloudinary.uploader.upload(req.body.image, {
-    //       public_id: `${Date.now()}`,
-    //       resource_type: "auto",
-    //     });
+    exports.upload = async (req, res) => {
+      try {
+        let result = await cloudinary.uploader.upload(req.body.image, {
+          public_id: `${Date.now()}`,
+          resource_type: "auto",
+        });
 
-    //     if (result) {
-    //       res.json({
-    //         public_id: result.public_id,
-    //         url: result.secure_url,
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error("Error uploading to Cloudinary:", error);
-    //     res.status(500).json({
-    //       error: "Internal Server Error",
-    //     });
-    //   }
-    // };
+        if (result) {
+          res.json({
+            public_id: result.public_id,
+            url: result.secure_url,
+          });
+        }
+      } catch (error) {
+        console.error("Error uploading to Cloudinary:", error);
+        res.status(500).json({
+          error: "Internal Server Error",
+        });
+      }
+    };
 
-    // exports.remove = (req, res) => {
-    //   const removed = req.body;
-    //   const image_id = req.body.public_id;
-    //   cloudinary.uploader.destroy(image_id, err => {
-    //     if (err) {
-    //       console.error("Error deleting image:", err);
-    //       return res.status(500).json({ error: "Internal Server Error" });
-    //     }
-    //     res.send({ removed, message: "Image deleted successfully!" });
-    //   });
-    // };
+    exports.remove = (req, res) => {
+      const removed = req.body;
+      const image_id = req.body.public_id;
+      cloudinary.uploader.destroy(image_id, (err) => {
+        if (err) {
+          console.error("Error deleting image:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+        }
+        res.send({ removed, message: "Image deleted successfully!" });
+      });
+    };
 
-    // app.post("/profile/imageUpload", exports.upload);
-    // app.post("/profile/imageRemove", exports.remove);
+    app.post("/profile/imageUpload", exports.upload);
+    app.post("/profile/imageRemove", exports.remove);
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
