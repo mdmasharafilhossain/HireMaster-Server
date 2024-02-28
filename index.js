@@ -1069,7 +1069,7 @@ async function run() {
         ship_add2: "Dhaka",
         ship_city: "Dhaka",
         ship_state: "Dhaka",
-        ship_postcode: 1000,
+         ship_postcode: 1000,
         ship_country: "Bangladesh",
       };
       console.log(data);
