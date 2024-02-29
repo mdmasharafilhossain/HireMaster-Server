@@ -386,7 +386,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/staticjobpost", async (req, res) => {
+    app.get("/filter/static-job-post", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
       const filter = {};
