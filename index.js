@@ -91,6 +91,16 @@ async function run() {
       .db("HireMaster")
       .collection("ManagersProfile");
 
+    const hiringTalentCollection = client
+      .db("HireMaster")
+      .collection("HiringTalent");
+
+    const userCollection = client.db("HireMaster").collection("Users");
+
+    const subscriberCollection = client
+      .db("HireMaster")
+      .collection("Subscribers");
+
     const jobCollection = client.db("HireMaster").collection("jobData");
 
     const appliedJobCollection = client
@@ -99,33 +109,32 @@ async function run() {
 
     const staticCollection = client.db("HireMaster").collection("JobPost");
 
-    const hiringTalentCollection = client
-      .db("HireMaster")
-      .collection("HiringTalent");
-
-    const userCollection = client.db("HireMaster").collection("Users");
     const UserPaymentCollection = client
       .db("HireMaster")
       .collection("Payments");
-    const subscriberCollection = client
-      .db("HireMaster")
-      .collection("Subscribers");
+
     const newsCollection = client.db("HireMaster").collection("News");
+
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
+
     const userReportCollection = client
       .db("HireMaster")
       .collection("UserReport");
+
     const premiumUserCourseCollection = client
       .db("HireMaster")
       .collection("Course");
+
     const jobFairEventBookingCollection = client
       .db("HireMaster")
       .collection("Event-bookings");
+
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
@@ -257,6 +266,33 @@ async function run() {
 
     app.get("/managerProfile", async (req, res) => {
       const result = await ManagersProfileCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.patch("/managerProfile", async (req, res) => {
+      const updatedProfile = req.body;
+
+      const existingProfile = await ManagersProfileCollection.findOne({
+        email: updatedProfile.email,
+      });
+
+      if (!existingProfile) {
+        return res.status(404).json({
+          message: "Profile not found",
+        });
+      }
+
+      const result = await ManagersProfileCollection.updateOne(
+        { email: updatedProfile.email },
+        { $set: updatedProfile }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(500).json({
+          message: "Failed to update profile",
+        });
+      }
+      res.status(200).json({ message: "Profile updated successfully" });
       res.send(result);
     });
 
