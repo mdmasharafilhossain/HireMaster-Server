@@ -1,5 +1,5 @@
 const express = require("express");
-// const cloudinary = require("cloudinary").v2;
+const cloudinary = require("cloudinary").v2;
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
@@ -78,11 +78,11 @@ const verifyToken = async (req, res, next) => {
 };
 
 // cloudinary image upload
-// cloudinary.config({
-//   cloud_name: process.env.CLOUD_NAME,
-//   api_key: process.env.CLOUD_KEY,
-//   api_secret: process.env.CLOUD_SECRET,
-// });
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
 
 async function run() {
   try {
@@ -872,19 +872,18 @@ async function run() {
     //
 
     app.post("/job-fair/event-bookings", async (req, res) => {
-      const { slug, email } = req.body;
-
+      const { slug, fairUser } = req.body;
       try {
         const existingBooking = await jobFairEventBookingCollection.findOne({
           slug: slug,
-          email: email,
+          "fairUser.email": fairUser.email,
         });
         if (existingBooking) {
           return res
             .status(400)
             .json({ message: "You have already booked this event." });
         }
-        const newBooking = { slug: slug, email: email };
+        const newBooking = { slug, fairUser };
         const result = await jobFairEventBookingCollection.insertOne(
           newBooking
         );
@@ -903,7 +902,7 @@ async function run() {
       const { email } = req.query;
       try {
         const bookings = await jobFairEventBookingCollection
-          .find({ email: email })
+          .find({ "fairUser.email": email })
           .toArray();
         let events = [];
         for (const booking of bookings) {
@@ -919,8 +918,10 @@ async function run() {
       }
     });
 
-    app.get("/job-fair/sponsor-event-bookings", async (req, res) => {
-      const { email } = req.query;
+    app.get("/job-fair/sponsor-event-bookings/:email", async (req, res) => {
+      const email = req.params.email;
+
+      // console.log("sponsor email", email);
       try {
         const events = await jobFairEventCollection
           .find({
@@ -931,12 +932,14 @@ async function run() {
         let bookedEvents = [];
 
         for (const event of events) {
-          const bookings = await jobFairEventBookingCollection.findOne({
-            slug: event.slug,
-          });
+          const bookings = await jobFairEventBookingCollection
+            .find({
+              slug: event.slug,
+            })
+            .toArray();
 
-          if (bookings) {
-            bookedEvents.push(bookings);
+          if (bookings && bookings.length > 0) {
+            bookedEvents = bookedEvents.concat(bookings.flat());
           }
         }
         res.json(bookedEvents);
@@ -954,7 +957,7 @@ async function run() {
         try {
           const result = await jobFairEventBookingCollection.deleteOne({
             slug: slug,
-            email: email,
+            "fairUser.email": email,
           });
           if (result.deletedCount === 0) {
             return res.status(404).json({ message: "Booking not found." });
@@ -1303,41 +1306,37 @@ async function run() {
 
     //
     // cloudinary
-    // exports.upload = async (req, res) => {
-    //   try {
-    //     let result = await cloudinary.uploader.upload(req.body.image, {
-    //       public_id: `${Date.now()}`,
-    //       resource_type: "auto",
-    //     });
+    app.post("/profile/imageUpload", async (req, res) => {
+      try {
+        let result = await cloudinary.uploader.upload(req.body.image, {
+          public_id: `${Date.now()}`,
+          resource_type: "auto",
+        });
 
-    //     if (result) {
-    //       res.json({
-    //         public_id: result.public_id,
-    //         url: result.secure_url,
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error("Error uploading to Cloudinary:", error);
-    //     res.status(500).json({
-    //       error: "Internal Server Error",
-    //     });
-    //   }
-    // };
-
-    // exports.remove = (req, res) => {
-    //   const removed = req.body;
-    //   const image_id = req.body.public_id;
-    //   cloudinary.uploader.destroy(image_id, err => {
-    //     if (err) {
-    //       console.error("Error deleting image:", err);
-    //       return res.status(500).json({ error: "Internal Server Error" });
-    //     }
-    //     res.send({ removed, message: "Image deleted successfully!" });
-    //   });
-    // };
-
-    // app.post("/profile/imageUpload", exports.upload);
-    // app.post("/profile/imageRemove", exports.remove);
+        if (result) {
+          res.json({
+            public_id: result.public_id,
+            url: result.secure_url,
+          });
+        }
+      } catch (error) {
+        console.error("Error uploading to Cloudinary:", error);
+        res.status(500).json({
+          error: "Internal Server Error",
+        });
+      }
+    });
+    app.post("/profile/imageRemove", (req, res) => {
+      const removed = req.body;
+      const image_id = req.body.public_id;
+      cloudinary.uploader.destroy(image_id, err => {
+        if (err) {
+          console.error("Error deleting image:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+        }
+        res.send({ removed, message: "Image deleted successfully!" });
+      });
+    });
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
