@@ -15,13 +15,13 @@ const client_URL = "http://localhost:5173";
 const server_URL = "http://localhost:5000";
 
 // Socket.io
-const http = require('http');
-const server = http.createServer(app)
+const http = require("http");
+const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "*"
-  }
-})
+    origin: "*",
+  },
+});
 
 // const client_URL = "https://hiremaster.netlify.app";
 // const server_URL = "https://hire-master-server.vercel.app";
@@ -29,18 +29,15 @@ const io = require("socket.io")(server, {
 // middleware
 app.use(
   cors({
-    origin: [
-      client_URL,
-    ],
+    origin: [client_URL],
     credentials: true,
   })
 );
 
-app.use(express.json());
 app.use(cookieParser());
 
-// app.use(express.json({ extended: true, limit: "25mb" }));
-// app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ extended: true, limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -133,16 +130,15 @@ async function run() {
       .db("HireMaster")
       .collection("Interested-events");
 
-
     // Socket.IO logic
-    io.on("connection", (socket) => {
+    io.on("connection", socket => {
       console.log("New client connected");
 
-      socket.on("chat", (payload) => {
+      socket.on("chat", payload => {
         console.log("User Message", payload);
-        io.emit("chat", payload)
-      });  
-    })  
+        io.emit("chat", payload);
+      });
+    });
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -390,7 +386,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/staticjobpost", async (req, res) => {
+    app.get("/filter/static-job-post", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
       const filter = {};
@@ -522,13 +518,13 @@ async function run() {
       const updatedDoc = {
         $set: {
           projectName: item.projectName,
-        projectLink: item.projectLink,
-        technologies: item.technologies,
-        projectStartMonth: item.projectStartMonth,
-        projectStartYear: item.projectStartYear,
-        projectEndMonth: item.projectEndMonth,
-        projectEndYear: item.projectEndYear,
-        projectDescription: item.projectDescription,
+          projectLink: item.projectLink,
+          technologies: item.technologies,
+          projectStartMonth: item.projectStartMonth,
+          projectStartYear: item.projectStartYear,
+          projectEndMonth: item.projectEndMonth,
+          projectEndYear: item.projectEndYear,
+          projectDescription: item.projectDescription,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -564,14 +560,11 @@ async function run() {
       const updatedDoc = {
         $set: {
           photo: item.photo,
-          
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
-
-    
 
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -1175,7 +1168,7 @@ async function run() {
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then((apiResponse) => {
+      sslcz.init(data).then(apiResponse => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
@@ -1203,9 +1196,7 @@ async function run() {
           }
         );
         if (result.modifiedCount > 0) {
-          res.redirect(
-            `${client_URL}/payment-success/${req.params.tranId}`
-          );
+          res.redirect(`${client_URL}/payment-success/${req.params.tranId}`);
         }
       });
 
@@ -1214,9 +1205,7 @@ async function run() {
           transaction_ID: req.params.tranId,
         });
         if (result.deletedCount > 0) {
-          res.redirect(
-            `${client_URL}/payment-fail/${req.params.tranId}`
-          );
+          res.redirect(`${client_URL}/payment-fail/${req.params.tranId}`);
         }
       });
     });
@@ -1361,4 +1350,4 @@ app.get("/", (req, res) => {
 
 server.listen(5000, () => {
   console.log(`Server is running on http://localhost:${5000}`);
-}); 
+});
