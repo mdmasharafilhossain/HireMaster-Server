@@ -14,6 +14,15 @@ const port = process.env.PORT || 5000;
 const client_URL = "http://localhost:5173";
 const server_URL = "http://localhost:5000";
 
+// Socket.io
+const http = require('http');
+const server = http.createServer(app)
+const io = require("socket.io")(server, {
+  cors: {
+    origin: "*"
+  }
+})
+
 // const client_URL = "https://hiremaster.netlify.app";
 // const server_URL = "https://hire-master-server.vercel.app";
 
@@ -123,6 +132,17 @@ async function run() {
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
+
+
+    // Socket.IO logic
+    io.on("connection", (socket) => {
+      console.log("New client connected");
+
+      socket.on("chat", (payload) => {
+        console.log("User Message", payload);
+        io.emit("chat", payload)
+      });  
+    })  
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -1268,6 +1288,10 @@ app.get("/", (req, res) => {
   res.send("HireMaster Server Running Successfully");
 });
 
-app.listen(port, () => {
-  console.log(`HireMaster Server Running at Port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`HireMaster Server Running at Port ${port}`);
+// });
+
+server.listen(5000, () => {
+  console.log(`Server is running on http://localhost:${5000}`);
+}); 
