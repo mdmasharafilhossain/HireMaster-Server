@@ -34,7 +34,6 @@ app.use(
   })
 );
 
-app.use(express.json());
 app.use(cookieParser());
 
 app.use(express.json({ extended: true, limit: "25mb" }));
