@@ -1107,6 +1107,15 @@ async function run() {
       res.send(result);
     });
 
+    // check Admin 
+
+    app.get('/users/checkAdmin/:email',async (req,res)=>{
+      const email = req.params.email;
+  
+  const result = await userCollection.find({email}).toArray();
+  res.send(result)
+    })
+
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
       const id = req.params.id;
