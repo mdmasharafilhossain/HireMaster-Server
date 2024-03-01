@@ -14,6 +14,9 @@ const port = process.env.PORT || 5000;
 const client_URL = "http://localhost:5173";
 const server_URL = "http://localhost:5000";
 
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
+
 // Socket.io
 const http = require("http");
 const server = http.createServer(app);
@@ -22,9 +25,6 @@ const io = require("socket.io")(server, {
     origin: "*",
   },
 });
-
-// const client_URL = "https://hiremaster.netlify.app";
-// const server_URL = "https://hire-master-server.vercel.app";
 
 // middleware
 app.use(
@@ -139,11 +139,12 @@ async function run() {
       .db("HireMaster")
       .collection("Interested-events");
 
+      
     // Socket.IO logic
-    io.on("connection", socket => {
+    io.on("connection", (socket) => {
       console.log("New client connected");
 
-      socket.on("chat", payload => {
+      socket.on("chat", (payload) => {
         console.log("User Message", payload);
         io.emit("chat", payload);
       });
@@ -174,30 +175,6 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
-    // -----------------JWT----------------------
-    app.post("/jwt", logger, async (req, res) => {
-      const user = req.body;
-      console.log("user for token", user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: false,
-          sameSite: "strict",
-          // secure: true,
-          // sameSite: "none",
-        })
-        .send({ success: true });
-    });
-
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("logging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    });
     //  ---------UserProfileCollection------------
 
     app.post("/userProfile", async (req, res) => {
@@ -395,11 +372,6 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
     app.get("/staticjobpost", async (req, res) => {
       const cursor = staticCollection.find();
       const result = await cursor.toArray();
@@ -1166,7 +1138,12 @@ async function run() {
       res.json(await jobFairUserCollection.find({}).toArray());
     });
 
-    // ---------------------- Admin Dashboard ------------------------
+    // ---------------------- Admin Dashboard END------------------------
+
+
+
+    // ------------------Payment API---------------------------------
+
 
     // --------------------SSL PAYMENT-------------------
 
@@ -1204,7 +1181,7 @@ async function run() {
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then(apiResponse => {
+      sslcz.init(data).then((apiResponse) => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
@@ -1294,7 +1271,7 @@ async function run() {
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
     });
-
+// ---------------------------------payment end-----------------------------
     // premium user delete
     app.delete("/payments/PremiumUser/:id", async (req, res) => {
       const id = req.params.id;
@@ -1354,7 +1331,7 @@ async function run() {
     app.post("/profile/imageRemove", (req, res) => {
       const removed = req.body;
       const image_id = req.body.public_id;
-      cloudinary.uploader.destroy(image_id, err => {
+      cloudinary.uploader.destroy(image_id, (err) => {
         if (err) {
           console.error("Error deleting image:", err);
           return res.status(500).json({ error: "Internal Server Error" });
