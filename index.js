@@ -713,7 +713,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 4;
+      const perPage = 5;
       const skip = pageNumber * perPage;
       const users = hiringTalentCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -1058,7 +1058,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 4;
+      const perPage = 5;
       const skip = pageNumber * perPage;
       const users = userCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -1078,6 +1078,19 @@ async function run() {
       const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
     });
+
+    // check Admin 
+
+    app.get('/users/checkAdmin/:email',async (req,res)=>{
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role == 'admin';
+      }
+      res.send({ admin });
+    })
 
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
