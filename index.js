@@ -748,6 +748,17 @@ async function run() {
       const UsersCount = await hiringTalentCollection.countDocuments();
       res.send({ result, UsersCount });
     });
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
 
     //
     //
