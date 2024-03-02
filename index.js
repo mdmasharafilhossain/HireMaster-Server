@@ -775,6 +775,13 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/hiring-talents/HR/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await hiringTalentCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //
     //
     // Fair registration routes
