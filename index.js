@@ -1397,6 +1397,6 @@ app.get("/", (req, res) => {
 //   console.log(`HireMaster Server Running at Port ${port}`);
 // });
 
-server.listen(5000, () => {
-  console.log(`Server is running on http://localhost:${5000}`);
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
