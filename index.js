@@ -11,8 +11,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-const client_URL = "http://localhost:5173";
-const server_URL = "http://localhost:5000";
+// const client_URL = "http://localhost:5173";
+// const server_URL = "http://localhost:5000";
 
 // Socket.io
 const http = require("http");
@@ -23,8 +23,8 @@ const io = require("socket.io")(server, {
   },
 });
 
-// const client_URL = "https://hiremaster.netlify.app";
-// const server_URL = "https://hire-master-server.vercel.app";
+const client_URL = "https://hiremaster.netlify.app";
+const server_URL = "https://hire-master-server.vercel.app";
 
 // middleware
 app.use(
@@ -749,6 +749,39 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
+    // make admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin Functionality added in Hiring Manager List
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/hiring-talents/HR/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await hiringTalentCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //
     //
     // Fair registration routes
@@ -1397,6 +1430,6 @@ app.get("/", (req, res) => {
 //   console.log(`HireMaster Server Running at Port ${port}`);
 // });
 
-server.listen(5000, () => {
-  console.log(`Server is running on http://localhost:${5000}`);
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
