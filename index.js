@@ -1,5 +1,5 @@
 const express = require("express");
-// const cloudinary = require("cloudinary").v2;
+const cloudinary = require("cloudinary").v2;
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
@@ -11,36 +11,33 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-const client_URL = "http://localhost:5173";
-const server_URL = "http://localhost:5000";
+// const client_URL = "http://localhost:5173";
+// const server_URL = "http://localhost:5000";
 
 // Socket.io
-const http = require('http');
-const server = http.createServer(app)
+const http = require("http");
+const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
-    origin: "*"
-  }
-})
+    origin: "*",
+  },
+});
 
-// const client_URL = "https://hiremaster.netlify.app";
-// const server_URL = "https://hire-master-server.vercel.app";
+const client_URL = "https://hiremaster.netlify.app";
+const server_URL = "https://hire-master-server.vercel.app";
 
 // middleware
 app.use(
   cors({
-    origin: [
-      client_URL,
-    ],
+    origin: [client_URL],
     credentials: true,
   })
 );
 
-app.use(express.json());
 app.use(cookieParser());
 
-// app.use(express.json({ extended: true, limit: "25mb" }));
-// app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+app.use(express.json({ extended: true, limit: "25mb" }));
+app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -78,11 +75,11 @@ const verifyToken = async (req, res, next) => {
 };
 
 // cloudinary image upload
-// cloudinary.config({
-//   cloud_name: process.env.CLOUD_NAME,
-//   api_key: process.env.CLOUD_KEY,
-//   api_secret: process.env.CLOUD_SECRET,
-// });
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUD_KEY,
+  api_secret: process.env.CLOUD_SECRET,
+});
 
 async function run() {
   try {
@@ -94,6 +91,16 @@ async function run() {
       .db("HireMaster")
       .collection("ManagersProfile");
 
+    const hiringTalentCollection = client
+      .db("HireMaster")
+      .collection("HiringTalent");
+
+    const userCollection = client.db("HireMaster").collection("Users");
+
+    const subscriberCollection = client
+      .db("HireMaster")
+      .collection("Subscribers");
+
     const jobCollection = client.db("HireMaster").collection("jobData");
 
     const appliedJobCollection = client
@@ -102,47 +109,45 @@ async function run() {
 
     const staticCollection = client.db("HireMaster").collection("JobPost");
 
-    const hiringTalentCollection = client
-      .db("HireMaster")
-      .collection("HiringTalent");
-
-    const userCollection = client.db("HireMaster").collection("Users");
     const UserPaymentCollection = client
       .db("HireMaster")
       .collection("Payments");
-    const subscriberCollection = client
-      .db("HireMaster")
-      .collection("Subscribers");
+
     const newsCollection = client.db("HireMaster").collection("News");
+
     const jobFairUserCollection = client
       .db("HireMaster")
       .collection("Fair-registration");
+
     const jobFairEventCollection = client
       .db("HireMaster")
       .collection("Fair-events");
+
     const userReportCollection = client
       .db("HireMaster")
       .collection("UserReport");
+
     const premiumUserCourseCollection = client
       .db("HireMaster")
       .collection("Course");
+
     const jobFairEventBookingCollection = client
       .db("HireMaster")
       .collection("Event-bookings");
+
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
 
-
     // Socket.IO logic
-    io.on("connection", (socket) => {
+    io.on("connection", socket => {
       console.log("New client connected");
 
-      socket.on("chat", (payload) => {
+      socket.on("chat", payload => {
         console.log("User Message", payload);
-        io.emit("chat", payload)
-      });  
-    })  
+        io.emit("chat", payload);
+      });
+    });
 
     // -----------------JWT----------------------
     app.post("/jwt", logger, async (req, res) => {
@@ -231,6 +236,15 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/JobPost/:job_role", async (req, res) => {
+      const job_role = req.params.job_role;
+      const query = {
+        job_role: job_role,
+      };
+      const result = await staticCollection.findOne(query);
+      res.send(result);
+    });
+
     // ---------Managers Profile Collection--------------
     app.post("/managerProfile", async (req, res) => {
       const newProfile = req.body;
@@ -252,6 +266,33 @@ async function run() {
 
     app.get("/managerProfile", async (req, res) => {
       const result = await ManagersProfileCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.patch("/managerProfile", async (req, res) => {
+      const updatedProfile = req.body;
+
+      const existingProfile = await ManagersProfileCollection.findOne({
+        email: updatedProfile.email,
+      });
+
+      if (!existingProfile) {
+        return res.status(404).json({
+          message: "Profile not found",
+        });
+      }
+
+      const result = await ManagersProfileCollection.updateOne(
+        { email: updatedProfile.email },
+        { $set: updatedProfile }
+      );
+
+      if (result.modifiedCount === 0) {
+        return res.status(500).json({
+          message: "Failed to update profile",
+        });
+      }
+      res.status(200).json({ message: "Profile updated successfully" });
       res.send(result);
     });
 
@@ -381,7 +422,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/staticjobpost", async (req, res) => {
+    app.get("/filter/static-job-post", async (req, res) => {
       const { job_title, job_time, salaryRange } = req.query;
       // console.log("Query parameters:", req.query);
       const filter = {};
@@ -430,6 +471,7 @@ async function run() {
       res.send(result);
     });
 
+    //---------------------- User Profile ------------------------
     app.patch("/UsersProfile/profileHead/:id", async (req, res) => {
       const item = req.body;
       const id = req.params.id;
@@ -499,6 +541,61 @@ async function run() {
           jobEndMonth: item.jobEndMonth,
           jobEndYear: item.jobEndYear,
           jobDescription: item.jobDescription,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/projects/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          projectName: item.projectName,
+          projectLink: item.projectLink,
+          technologies: item.technologies,
+          projectStartMonth: item.projectStartMonth,
+          projectStartYear: item.projectStartYear,
+          projectEndMonth: item.projectEndMonth,
+          projectEndYear: item.projectEndYear,
+          projectDescription: item.projectDescription,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/experience/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          jobTitle: item.jobTitle,
+          jobType: item.jobType,
+          JobType: item.JobType,
+          companyName: item.companyName,
+          jobLocation: item.jobLocation,
+          jobStartMonth: item.jobStartMonth,
+          jobStartYear: item.jobStartYear,
+          jobEndMonth: item.jobEndMonth,
+          jobEndYear: item.jobEndYear,
+          jobDescription: item.jobDescription,
+        },
+      };
+      const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.patch("/UsersProfile/photo/:id", async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          photo: item.photo,
         },
       };
       const result = await UsersProfileCollection.updateOne(filter, updatedDoc);
@@ -644,7 +741,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 4;
+      const perPage = 5;
       const skip = pageNumber * perPage;
       const users = hiringTalentCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -804,19 +901,18 @@ async function run() {
     //
 
     app.post("/job-fair/event-bookings", async (req, res) => {
-      const { slug, email } = req.body;
-
+      const { slug, fairUser } = req.body;
       try {
         const existingBooking = await jobFairEventBookingCollection.findOne({
           slug: slug,
-          email: email,
+          "fairUser.email": fairUser.email,
         });
         if (existingBooking) {
           return res
             .status(400)
             .json({ message: "You have already booked this event." });
         }
-        const newBooking = { slug: slug, email: email };
+        const newBooking = { slug, fairUser };
         const result = await jobFairEventBookingCollection.insertOne(
           newBooking
         );
@@ -835,7 +931,7 @@ async function run() {
       const { email } = req.query;
       try {
         const bookings = await jobFairEventBookingCollection
-          .find({ email: email })
+          .find({ "fairUser.email": email })
           .toArray();
         let events = [];
         for (const booking of bookings) {
@@ -851,8 +947,10 @@ async function run() {
       }
     });
 
-    app.get("/job-fair/sponsor-event-bookings", async (req, res) => {
-      const { email } = req.query;
+    app.get("/job-fair/sponsor-event-bookings/:email", async (req, res) => {
+      const email = req.params.email;
+
+      // console.log("sponsor email", email);
       try {
         const events = await jobFairEventCollection
           .find({
@@ -863,12 +961,14 @@ async function run() {
         let bookedEvents = [];
 
         for (const event of events) {
-          const bookings = await jobFairEventBookingCollection.findOne({
-            slug: event.slug,
-          });
+          const bookings = await jobFairEventBookingCollection
+            .find({
+              slug: event.slug,
+            })
+            .toArray();
 
-          if (bookings) {
-            bookedEvents.push(bookings);
+          if (bookings && bookings.length > 0) {
+            bookedEvents = bookedEvents.concat(bookings.flat());
           }
         }
         res.json(bookedEvents);
@@ -886,7 +986,7 @@ async function run() {
         try {
           const result = await jobFairEventBookingCollection.deleteOne({
             slug: slug,
-            email: email,
+            "fairUser.email": email,
           });
           if (result.deletedCount === 0) {
             return res.status(404).json({ message: "Booking not found." });
@@ -986,7 +1086,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 4;
+      const perPage = 5;
       const skip = pageNumber * perPage;
       const users = userCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -1006,6 +1106,19 @@ async function run() {
       const result = await userCollection.updateOne(filter, UpdatedDoc);
       res.send(result);
     });
+
+    // check Admin 
+
+    app.get('/users/checkAdmin/:email',async (req,res)=>{
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role == 'admin';
+      }
+      res.send({ admin });
+    })
 
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
@@ -1104,7 +1217,7 @@ async function run() {
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then((apiResponse) => {
+      sslcz.init(data).then(apiResponse => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
@@ -1132,9 +1245,7 @@ async function run() {
           }
         );
         if (result.modifiedCount > 0) {
-          res.redirect(
-            `${client_URL}/payment-success/${req.params.tranId}`
-          );
+          res.redirect(`${client_URL}/payment-success/${req.params.tranId}`);
         }
       });
 
@@ -1143,9 +1254,7 @@ async function run() {
           transaction_ID: req.params.tranId,
         });
         if (result.deletedCount > 0) {
-          res.redirect(
-            `${client_URL}/payment-fail/${req.params.tranId}`
-          );
+          res.redirect(`${client_URL}/payment-fail/${req.params.tranId}`);
         }
       });
     });
@@ -1235,41 +1344,37 @@ async function run() {
 
     //
     // cloudinary
-    // exports.upload = async (req, res) => {
-    //   try {
-    //     let result = await cloudinary.uploader.upload(req.body.image, {
-    //       public_id: `${Date.now()}`,
-    //       resource_type: "auto",
-    //     });
+    app.post("/profile/imageUpload", async (req, res) => {
+      try {
+        let result = await cloudinary.uploader.upload(req.body.image, {
+          public_id: `${Date.now()}`,
+          resource_type: "auto",
+        });
 
-    //     if (result) {
-    //       res.json({
-    //         public_id: result.public_id,
-    //         url: result.secure_url,
-    //       });
-    //     }
-    //   } catch (error) {
-    //     console.error("Error uploading to Cloudinary:", error);
-    //     res.status(500).json({
-    //       error: "Internal Server Error",
-    //     });
-    //   }
-    // };
-
-    // exports.remove = (req, res) => {
-    //   const removed = req.body;
-    //   const image_id = req.body.public_id;
-    //   cloudinary.uploader.destroy(image_id, err => {
-    //     if (err) {
-    //       console.error("Error deleting image:", err);
-    //       return res.status(500).json({ error: "Internal Server Error" });
-    //     }
-    //     res.send({ removed, message: "Image deleted successfully!" });
-    //   });
-    // };
-
-    // app.post("/profile/imageUpload", exports.upload);
-    // app.post("/profile/imageRemove", exports.remove);
+        if (result) {
+          res.json({
+            public_id: result.public_id,
+            url: result.secure_url,
+          });
+        }
+      } catch (error) {
+        console.error("Error uploading to Cloudinary:", error);
+        res.status(500).json({
+          error: "Internal Server Error",
+        });
+      }
+    });
+    app.post("/profile/imageRemove", (req, res) => {
+      const removed = req.body;
+      const image_id = req.body.public_id;
+      cloudinary.uploader.destroy(image_id, err => {
+        if (err) {
+          console.error("Error deleting image:", err);
+          return res.status(500).json({ error: "Internal Server Error" });
+        }
+        res.send({ removed, message: "Image deleted successfully!" });
+      });
+    });
     // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
     // Send a ping to confirm a successful connection
@@ -1294,4 +1399,4 @@ app.get("/", (req, res) => {
 
 server.listen(5000, () => {
   console.log(`Server is running on http://localhost:${5000}`);
-}); 
+});
