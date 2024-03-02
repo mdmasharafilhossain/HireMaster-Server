@@ -620,7 +620,7 @@ async function run() {
     });
 
     app.post("/hiring-talents", async (req, res) => {
-      const user = req.body;
+      const user = req.body; 
       const query = { email: user.email };
       const isExist = await hiringTalentCollection.findOne(query);
       if (isExist) {
@@ -1290,7 +1290,7 @@ app.get("/", (req, res) => {
 
 // app.listen(port, () => {
 //   console.log(`HireMaster Server Running at Port ${port}`);
-// });
+// }); 
 
 server.listen(5000, () => {
   console.log(`Server is running on http://localhost:${5000}`);
