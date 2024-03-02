@@ -748,12 +748,27 @@ async function run() {
       const UsersCount = await hiringTalentCollection.countDocuments();
       res.send({ result, UsersCount });
     });
+
+    // make admin to Hiring Manager
     app.patch("/hiring-talents/admin/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
         $set: {
           role: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin Functionality added in Hiring Manager List
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role: "",
         },
       };
       const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
