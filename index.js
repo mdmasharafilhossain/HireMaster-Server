@@ -46,6 +46,12 @@ app.use(
   })
 );
 
+// my code 
+app.options('*', cors({
+  allowedHeaders: ['Content-Type', 'Authorization', 'Server-Side-Link' ]
+}));
+// end
+
 app.use(cookieParser());
 
 app.use(express.json({ extended: true, limit: "25mb" }));
