@@ -11,8 +11,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-// const client_URL = "http://localhost:5173";
-// const server_URL = "http://localhost:5000";
+const client_URL = "http://localhost:5173";
+const server_URL = "http://localhost:5000";
 
 // Socket.io
 const http = require("http");
@@ -23,8 +23,8 @@ const io = require("socket.io")(server, {
   },
 });
 
-const client_URL = "https://hiremaster.netlify.app";
-const server_URL = "https://hire-master-server.vercel.app";
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
 
 // middleware
 app.use(
@@ -755,7 +755,7 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
         $set: {
-          role: "admin",
+          role2: "admin",
         },
       };
       const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
@@ -768,7 +768,7 @@ async function run() {
       const filter = { _id: new ObjectId(id) };
       const UpdatedDoc = {
         $unset: {
-          role: "",
+          role2: "",
         },
       };
       const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
