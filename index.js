@@ -782,6 +782,17 @@ async function run() {
       res.send(result);
     });
 
+    // check Admin
+    app.get('/hiring-talents/checkAdmin/:email',async (req,res)=>{
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await hiringTalentCollection.findOne(query);
+      let admin = false;
+      if(user){
+        admin = user?.role2 == 'admin';
+      }
+      res.send({ admin });
+    })
     //
     //
     // Fair registration routes
