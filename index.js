@@ -11,30 +11,32 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-const client_URL = "http://localhost:5173";
-const server_URL = "http://localhost:5000";
+// const client_URL = "http://localhost:5173";
+// const server_URL = "http://localhost:5000";
+
+const client_URL = "https://hiremaster-client.web.app";
+const server_URL = "https://hire-master-server-sigma.vercel.app";
 
 // Socket.io
 const http = require("http");
 const server = http.createServer(app);
-const io = require("socket.io")(server, {
-  cors: {
-    origin: "*",
-  },
-});
-
 // const io = require("socket.io")(server, {
 //   cors: {
 //     origin: "*",
-//     methods: ["GET", "POST"],
-//     allowedHeaders: ["my-custom-header"],
-//     credentials: true
-//   }
+//   },
 // });
 
+// server-side
+const io = require("socket.io")(server, {
+  cors: {
+    origin: [client_URL],
+    methods: ["GET", "POST"],
+    allowedHeaders: ["https://hire-master-server-sigma.vercel.app"],
+    credentials: true
+  }
+});
 
-// const client_URL = "https://hiremaster.netlify.app";
-// const server_URL = "https://hire-master-server.vercel.app";
+
 
 // middleware
 app.use(
@@ -1407,6 +1409,6 @@ app.get("/", (req, res) => {
 //   console.log(`HireMaster Server Running at Port ${port}`);
 // }); 
 
-server.listen(5000, () => {
-  console.log(`Server is running on http://localhost:${5000}`);
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
