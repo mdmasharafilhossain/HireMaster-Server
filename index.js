@@ -745,7 +745,7 @@ async function run() {
       const skip = pageNumber * perPage;
       const users = hiringTalentCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
-      const UsersCount = await hiringTalentCollection.countDocuments();
+       const UsersCount = await hiringTalentCollection.countDocuments();
       res.send({ result, UsersCount });
     });
 
