@@ -39,6 +39,29 @@ app.use(cookieParser());
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
+// multer for file upload
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
+
+const uploadPath = path.join(__dirname, "resumes");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
+}
+
+app.use("/resumes", express.static(uploadPath));
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now();
+    cb(null, uniqueSuffix + file.originalname);
+  },
+});
+const upload = multer({ storage: storage });
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -139,6 +162,7 @@ async function run() {
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
+    const resumeCollection = client.db("HireMaster").collection("User-resumes");
 
       
     // Socket.IO logic
@@ -189,6 +213,50 @@ async function run() {
       const query = { email: email };
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
+    });
+
+    // user resume upload
+    app.post("/upload/cv-resume", upload.single("file"), async (req, res) => {
+      try {
+        const resume = req.file.filename;
+        const user_email = req.body.user_email;
+        const existingUser = await resumeCollection.findOne({ user_email });
+
+        // if (existingUser) {
+        //   res.status(409).json({ error: "Resume already exists" });
+        // } else {
+        const result = await resumeCollection.insertOne({
+          user_email,
+          resume,
+        });
+        const savedResume = {
+          _id: result.insertedId,
+          user_email: user_email,
+          resume: resume,
+        };
+        res.json({
+          success: true,
+          message: "Resume uploaded successfully",
+          savedResume,
+        });
+        // }
+      } catch (error) {
+        console.error("Error during file upload:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/get-resumes/:user_email", async (req, res) => {
+      try {
+        const user_email = req.params.user_email;
+        const userResumes = await resumeCollection
+          .find({ user_email })
+          .toArray();
+        res.json(userResumes);
+      } catch (error) {
+        console.error("Error during GET request:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // app.get("/userProfile/:email", async (req, res) => {
@@ -727,7 +795,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 5;
+      const perPage = 10;
       const skip = pageNumber * perPage;
       const users = hiringTalentCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -735,6 +803,50 @@ async function run() {
       res.send({ result, UsersCount });
     });
 
+    // make admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role2: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin Functionality added in Hiring Manager List
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role2: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/hiring-talents/HR/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await hiringTalentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // check Admin
+    app.get("/hiring-talents/checkAdmin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await hiringTalentCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role2 == "admin";
+      }
+      res.send({ admin });
+    });
     //
     //
     // Fair registration routes
@@ -1072,7 +1184,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 5;
+      const perPage = 10;
       const skip = pageNumber * perPage;
       const users = userCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -1093,18 +1205,18 @@ async function run() {
       res.send(result);
     });
 
-    // check Admin 
+    // check Admin
 
-    app.get('/users/checkAdmin/:email',async (req,res)=>{
+    app.get("/users/checkAdmin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
-      if(user){
-        admin = user?.role == 'admin';
+      if (user) {
+        admin = user?.role == "admin";
       }
       res.send({ admin });
-    })
+    });
 
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
@@ -1279,7 +1391,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 4;
+      const perPage = 10;
       const skip = pageNumber * perPage;
       const users = UserPaymentCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
