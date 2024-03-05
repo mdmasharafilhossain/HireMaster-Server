@@ -87,6 +87,8 @@ async function run() {
       .db("HireMaster")
       .collection("UsersProfile");
 
+    const userCollection = client.db("HireMaster").collection("Users");
+
     const ManagersProfileCollection = client
       .db("HireMaster")
       .collection("ManagersProfile");
@@ -95,7 +97,6 @@ async function run() {
       .db("HireMaster")
       .collection("HiringTalent");
 
-    const userCollection = client.db("HireMaster").collection("Users");
 
     const subscriberCollection = client
       .db("HireMaster")
@@ -327,6 +328,19 @@ async function run() {
       const result = await appliedJobCollection.find(query).toArray();
       res.send(result);
     });
+
+    // app.get("/showapplied-jobs", logger, async (req, res) => {
+    
+    //   try {
+    //     // Find applied jobs based on the query
+    //     const result = await appliedJobCollection.find().toArray();
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error("Error retrieving applied jobs:", error);
+    //     res.status(500).send({ message: "Internal Server Error" });
+    //   }
+    // });
+    
 
     app.delete("/showapplied-jobs/:email", async (req, res) => {
       const email = req.params.email;
@@ -1374,6 +1388,6 @@ app.get("/", (req, res) => {
 //   console.log(`HireMaster Server Running at Port ${port}`);
 // });
 
-server.listen(5000, () => {
-  console.log(`Server is running on http://localhost:${5000}`);
+server.listen(port, () => {
+  console.log(`Server is running on http://localhost:${port}`);
 });
