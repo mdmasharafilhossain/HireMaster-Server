@@ -236,6 +236,12 @@ async function run() {
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
     });
+    app.get("/userProfile/all", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const result = await UsersProfileCollection.find().toArray();
+      res.send(result);
+    });
 
     // user resume upload
     app.post("/upload/cv-resume", upload.single("file"), async (req, res) => {
