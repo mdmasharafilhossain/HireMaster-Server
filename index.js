@@ -10,9 +10,16 @@ const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
+// multer for file upload
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
-// const client_URL = "http://localhost:5173";
-// const server_URL = "http://localhost:5000";
+const client_URL = "http://localhost:5173";
+const server_URL = "http://localhost:5000";
+
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
 
 // Socket.io
 const http = require("http");
@@ -23,9 +30,6 @@ const io = require("socket.io")(server, {
   },
 });
 
-const client_URL = "https://hiremaster.netlify.app";
-const server_URL = "https://hire-master-server.vercel.app";
-
 // middleware
 app.use(
   cors({
@@ -35,9 +39,28 @@ app.use(
 );
 
 app.use(cookieParser());
-
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+
+
+const uploadPath = path.join(__dirname, "resumes");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
+}
+
+app.use("/resumes", express.static(uploadPath));
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now();
+    cb(null, uniqueSuffix + file.originalname);
+  },
+});
+const upload = multer({ storage: storage });
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -87,6 +110,8 @@ async function run() {
       .db("HireMaster")
       .collection("UsersProfile");
 
+    const userCollection = client.db("HireMaster").collection("Users");
+
     const ManagersProfileCollection = client
       .db("HireMaster")
       .collection("ManagersProfile");
@@ -95,7 +120,6 @@ async function run() {
       .db("HireMaster")
       .collection("HiringTalent");
 
-    const userCollection = client.db("HireMaster").collection("Users");
 
     const subscriberCollection = client
       .db("HireMaster")
@@ -138,12 +162,14 @@ async function run() {
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
+    const resumeCollection = client.db("HireMaster").collection("User-resumes");
 
+      
     // Socket.IO logic
-    io.on("connection", socket => {
+    io.on("connection", (socket) => {
       console.log("New client connected");
 
-      socket.on("chat", payload => {
+      socket.on("chat", (payload) => {
         console.log("User Message", payload);
         io.emit("chat", payload);
       });
@@ -174,30 +200,6 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
-    // -----------------JWT----------------------
-    app.post("/jwt", logger, async (req, res) => {
-      const user = req.body;
-      console.log("user for token", user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-
-      res
-        .cookie("token", token, {
-          httpOnly: true,
-          secure: false,
-          sameSite: "strict",
-          // secure: true,
-          // sameSite: "none",
-        })
-        .send({ success: true });
-    });
-
-    app.post("/logout", async (req, res) => {
-      const user = req.body;
-      console.log("logging out", user);
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
-    });
     //  ---------UserProfileCollection------------
 
     app.post("/userProfile", async (req, res) => {
@@ -211,6 +213,50 @@ async function run() {
       const query = { email: email };
       const result = await UsersProfileCollection.find(query).toArray();
       res.send(result);
+    });
+
+    // user resume upload
+    app.post("/upload/cv-resume", upload.single("file"), async (req, res) => {
+      try {
+        const resume = req.file.filename;
+        const user_email = req.body.user_email;
+        const existingUser = await resumeCollection.findOne({ user_email });
+
+        // if (existingUser) {
+        //   res.status(409).json({ error: "Resume already exists" });
+        // } else {
+        const result = await resumeCollection.insertOne({
+          user_email,
+          resume,
+        });
+        const savedResume = {
+          _id: result.insertedId,
+          user_email: user_email,
+          resume: resume,
+        };
+        res.json({
+          success: true,
+          message: "Resume uploaded successfully",
+          savedResume,
+        });
+        // }
+      } catch (error) {
+        console.error("Error during file upload:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/get-resumes/:user_email", async (req, res) => {
+      try {
+        const user_email = req.params.user_email;
+        const userResumes = await resumeCollection
+          .find({ user_email })
+          .toArray();
+        res.json(userResumes);
+      } catch (error) {
+        console.error("Error during GET request:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // app.get("/userProfile/:email", async (req, res) => {
@@ -271,11 +317,11 @@ async function run() {
 
     app.patch("/managerProfile", async (req, res) => {
       const updatedProfile = req.body;
-
+      console.log(updatedProfile);
       const existingProfile = await ManagersProfileCollection.findOne({
         email: updatedProfile.email,
       });
-
+      console.log(existingProfile);
       if (!existingProfile) {
         return res.status(404).json({
           message: "Profile not found",
@@ -287,12 +333,13 @@ async function run() {
         { $set: updatedProfile }
       );
 
-      if (result.modifiedCount === 0) {
-        return res.status(500).json({
-          message: "Failed to update profile",
-        });
-      }
-      res.status(200).json({ message: "Profile updated successfully" });
+      // if (result.modifiedCount === 0) {
+      //   return res.status(500).json({
+      //     message: "Failed to update profile",
+      //   });
+      // }
+      // res.status(200).json({ message: "Profile updated successfully" });
+      console.log(result);
       res.send(result);
     });
 
@@ -351,6 +398,19 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/showapplied-jobs", logger, async (req, res) => {
+    
+    //   try {
+    //     // Find applied jobs based on the query
+    //     const result = await appliedJobCollection.find().toArray();
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error("Error retrieving applied jobs:", error);
+    //     res.status(500).send({ message: "Internal Server Error" });
+    //   }
+    // });
+    
+
     app.delete("/showapplied-jobs/:email", async (req, res) => {
       const email = req.params.email;
       const query = {
@@ -395,11 +455,6 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
     app.get("/staticjobpost", async (req, res) => {
       const cursor = staticCollection.find();
       const result = await cursor.toArray();
@@ -783,16 +838,16 @@ async function run() {
     });
 
     // check Admin
-    app.get('/hiring-talents/checkAdmin/:email',async (req,res)=>{
+    app.get("/hiring-talents/checkAdmin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await hiringTalentCollection.findOne(query);
       let admin = false;
-      if(user){
-        admin = user?.role2 == 'admin';
+      if (user) {
+        admin = user?.role2 == "admin";
       }
       res.send({ admin });
-    })
+    });
     //
     //
     // Fair registration routes
@@ -1151,18 +1206,18 @@ async function run() {
       res.send(result);
     });
 
-    // check Admin 
+    // check Admin
 
-    app.get('/users/checkAdmin/:email',async (req,res)=>{
+    app.get("/users/checkAdmin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
-      if(user){
-        admin = user?.role == 'admin';
+      if (user) {
+        admin = user?.role == "admin";
       }
       res.send({ admin });
-    })
+    });
 
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
@@ -1223,7 +1278,12 @@ async function run() {
       res.json(await jobFairUserCollection.find({}).toArray());
     });
 
-    // ---------------------- Admin Dashboard ------------------------
+    // ---------------------- Admin Dashboard END------------------------
+
+
+
+    // ------------------Payment API---------------------------------
+
 
     // --------------------SSL PAYMENT-------------------
 
@@ -1261,7 +1321,7 @@ async function run() {
       };
       console.log(data);
       const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then(apiResponse => {
+      sslcz.init(data).then((apiResponse) => {
         // Redirect the user to payment gateway
         let GatewayPageURL = apiResponse.GatewayPageURL;
         res.send({ url: GatewayPageURL });
@@ -1351,7 +1411,7 @@ async function run() {
       const paymentResult = UserPaymentCollection.insertOne(payment);
       res.send(paymentResult);
     });
-
+// ---------------------------------payment end-----------------------------
     // premium user delete
     app.delete("/payments/PremiumUser/:id", async (req, res) => {
       const id = req.params.id;
@@ -1411,7 +1471,7 @@ async function run() {
     app.post("/profile/imageRemove", (req, res) => {
       const removed = req.body;
       const image_id = req.body.public_id;
-      cloudinary.uploader.destroy(image_id, err => {
+      cloudinary.uploader.destroy(image_id, (err) => {
         if (err) {
           console.error("Error deleting image:", err);
           return res.status(500).json({ error: "Internal Server Error" });
