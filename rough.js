@@ -10,6 +10,10 @@ const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
+// multer for file upload
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
 const client_URL = "http://localhost:5173";
 const server_URL = "http://localhost:5000";
@@ -23,7 +27,6 @@ const server = http.createServer(app);
 const io = require("socket.io")(server, {
   cors: {
     origin: "*",
-    
   },
 });
 
@@ -36,9 +39,28 @@ app.use(
 );
 
 app.use(cookieParser());
-
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+
+
+
+const uploadPath = path.join(__dirname, "resumes");
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath);
+}
+
+app.use("/resumes", express.static(uploadPath));
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now();
+    cb(null, uniqueSuffix + file.originalname);
+  },
+});
+const upload = multer({ storage: storage });
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lzichn4.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -140,6 +162,7 @@ async function run() {
     const jobFairInterestedEventCollection = client
       .db("HireMaster")
       .collection("Interested-events");
+    const resumeCollection = client.db("HireMaster").collection("User-resumes");
 
       
     // Socket.IO logic
@@ -177,19 +200,50 @@ async function run() {
       res.clearCookie("token", { maxAge: 0 }).send({ success: true });
     });
 
-    //  ---------UserProfileCollection------------
 
-    app.post("/userProfile", async (req, res) => {
-      const feedbacks = req.body;
-      const result = await UsersProfileCollection.insertOne(feedbacks);
-      res.send(result);
+
+    // user resume upload
+    app.post("/upload/cv-resume", upload.single("file"), async (req, res) => {
+      try {
+        const resume = req.file.filename;
+        const user_email = req.body.user_email;
+        const existingUser = await resumeCollection.findOne({ user_email });
+
+        // if (existingUser) {
+        //   res.status(409).json({ error: "Resume already exists" });
+        // } else {
+        const result = await resumeCollection.insertOne({
+          user_email,
+          resume,
+        });
+        const savedResume = {
+          _id: result.insertedId,
+          user_email: user_email,
+          resume: resume,
+        };
+        res.json({
+          success: true,
+          message: "Resume uploaded successfully",
+          savedResume,
+        });
+        // }
+      } catch (error) {
+        console.error("Error during file upload:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
-    app.get("/userProfile", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const result = await UsersProfileCollection.find(query).toArray();
-      res.send(result);
+    app.get("/get-resumes/:user_email", async (req, res) => {
+      try {
+        const user_email = req.params.user_email;
+        const userResumes = await resumeCollection
+          .find({ user_email })
+          .toArray();
+        res.json(userResumes);
+      } catch (error) {
+        console.error("Error during GET request:", error);
+        res.status(500).json({ error: "Internal Server Error" });
+      }
     });
 
     // app.get("/userProfile/:email", async (req, res) => {
@@ -201,7 +255,7 @@ async function run() {
     //   res.send(result);
     // });
 
-    
+
 
     // ---------Managers Profile Collection--------------
     app.post("/managerProfile", async (req, res) => {
@@ -263,7 +317,109 @@ async function run() {
       res.send(result);
     });
 
+
    
+    
+    // make admin to Hiring Manager
+    app.patch("/hiring-talents/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $set: {
+          role2: "admin",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    // remove admin Functionality added in Hiring Manager List
+    app.patch("/hiring-talents/remove-admin/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const UpdatedDoc = {
+        $unset: {
+          role2: "",
+        },
+      };
+      const result = await hiringTalentCollection.updateOne(filter, UpdatedDoc);
+      res.send(result);
+    });
+
+    app.delete("/hiring-talents/HR/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await hiringTalentCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // check Admin
+    app.get("/hiring-talents/checkAdmin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await hiringTalentCollection.findOne(query);
+      let admin = false;
+      if (user) {
+        admin = user?.role2 == "admin";
+      }
+      res.send({ admin });
+    });
+    //
+    //
+    // Fair registration routes
+    //
+    //
+
+    app.post("/fair-registration", async (req, res) => {
+      const register = req.body;
+      const query = { email: register.email };
+      const isRegistered = await jobFairUserCollection.findOne(query);
+
+      try {
+        if (isRegistered) {
+          return res.send({ status: "Already registered" });
+        }
+        const result = await jobFairUserCollection.insertOne(register);
+        res.json(result);
+      } catch (error) {
+        console.error("Error inserting news:", error);
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.get("/fair-registration", async (req, res) => {
+      res.json(await jobFairUserCollection.find({}).toArray());
+    });
+
+    app.get("/fair-registration/:email", async (req, res) => {
+      const email = req.params.email;
+      try {
+        const result = await jobFairUserCollection.findOne({ email });
+        res.json(result);
+      } catch (error) {
+        res.status(500).send({ error: "Internal Server Error" });
+      }
+    });
+
+    app.patch("/fair-registration/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedUser = req.body;
+      const updatedDoc = {
+        $set: {
+          fullname: updatedUser.fullname,
+          profilePicture: updatedUser.profilePicture,
+        },
+      };
+      const result = await jobFairUserCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.json(result);
+    });
+
     // ---------------------- Admin Dashboard ------------------------
     app.get("/users", async (req, res) => {
       const result = await userCollection.find().toArray();
@@ -276,7 +432,7 @@ async function run() {
       const page = query.page;
       console.log(page);
       const pageNumber = parseInt(page);
-      const perPage = 5;
+      const perPage = 10;
       const skip = pageNumber * perPage;
       const users = userCollection.find().skip(skip).limit(perPage);
       const result = await users.toArray();
@@ -297,18 +453,18 @@ async function run() {
       res.send(result);
     });
 
-    // check Admin 
+    // check Admin
 
-    app.get('/users/checkAdmin/:email',async (req,res)=>{
+    app.get("/users/checkAdmin/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
       let admin = false;
-      if(user){
-        admin = user?.role == 'admin';
+      if (user) {
+        admin = user?.role == "admin";
       }
       res.send({ admin });
-    })
+    });
 
     // remove admin
     app.patch("/users/remove-admin/:id", async (req, res) => {
@@ -324,184 +480,8 @@ async function run() {
     });
 
     // Delete Job Seeker
-    app.delete("/users/JobSeeker/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
-    });
-
-    app.post("/hiring-talents", async (req, res) => {
-      const hirer = req.body;
-      // console.log(hirer);
-      const result = await hiringTalentCollection.insertOne(hirer);
-      res.send(result);
-    });
-
-    app.get("/users", async (req, res) => {
-      res.json(await userCollection.find({}).toArray());
-    });
-    app.get("/hiring-talents", async (req, res) => {
-      res.json(await hiringTalentCollection.find({}).toArray());
-    });
-
-    app.post("/fair-registration", async (req, res) => {
-      const register = req.body;
-      const query = { email: register.email };
-      const isRegistered = await jobFairUserCollection.findOne(query);
-
-      try {
-        if (isRegistered) {
-          return res.send({ status: " Already registered." });
-        }
-        const result = await jobFairUserCollection.insertOne(register);
-        if (result) res.json(result);
-        else {
-          res.status(404).send({ error: "News not found" });
-        }
-      } catch (error) {
-        console.error("Error inserting news:", error);
-        res.status(500).send({ error: "Internal Server Error" });
-      }
-    });
-
-    app.get("/fair-registration", async (req, res) => {
-      res.json(await jobFairUserCollection.find({}).toArray());
-    });
-
-    // ---------------------- Admin Dashboard END------------------------
-
-
-
-    // ------------------Payment API---------------------------------
-
-
-    // --------------------SSL PAYMENT-------------------
-
-    const tran_id = new ObjectId().toString();
-    app.post("/buy-premium", async (req, res) => {
-      const data = {
-        total_amount: req.body.amount,
-        currency: "BDT",
-        tran_id: tran_id, // use unique tran_id for each api call
-        success_url: `${server_URL}/payment-success/${tran_id}`,
-        fail_url: `${server_URL}/${tran_id}`,
-        cancel_url: `${server_URL}/cancel`,
-        ipn_url: `${server_URL}/ipn`,
-        shipping_method: "Courier",
-        product_name: "Computer.",
-        product_category: "Electronic",
-        product_profile: "general",
-        cus_name: "Customer Name",
-        cus_email: req.body.email,
-        cus_add1: "Dhaka",
-        cus_add2: "Dhaka",
-        cus_city: "Dhaka",
-        cus_state: "Dhaka",
-        cus_postcode: "1000",
-        cus_country: "Bangladesh",
-        cus_phone: "01711111111",
-        cus_fax: "01711111111",
-        ship_name: "Customer Name",
-        ship_add1: "Dhaka",
-        ship_add2: "Dhaka",
-        ship_city: "Dhaka",
-        ship_state: "Dhaka",
-        ship_postcode: 1000,
-        ship_country: "Bangladesh",
-      };
-      console.log(data);
-      const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
-      sslcz.init(data).then((apiResponse) => {
-        // Redirect the user to payment gateway
-        let GatewayPageURL = apiResponse.GatewayPageURL;
-        res.send({ url: GatewayPageURL });
-
-        const finalPayment = {
-          email: req.body.email,
-          name: req.body.name,
-          price: req.body.amount,
-          date: new Date(),
-          transaction_ID: tran_id,
-          paidStatus: false,
-        };
-        const result = UserPaymentCollection.insertOne(finalPayment);
-        console.log("Redirecting to: ", GatewayPageURL);
-      });
-
-      app.post("/payment-success/:tranId", async (req, res) => {
-        console.log(req.params.tranId);
-        const result = await UserPaymentCollection.updateOne(
-          { transaction_ID: req.params.tranId },
-          {
-            $set: {
-              paidStatus: true,
-            },
-          }
-        );
-        if (result.modifiedCount > 0) {
-          res.redirect(`${client_URL}/payment-success/${req.params.tranId}`);
-        }
-      });
-
-      app.post("/payment-fail/:tranId", async (req, res) => {
-        const result = await UserPaymentCollection.deleteOne({
-          transaction_ID: req.params.tranId,
-        });
-        if (result.deletedCount > 0) {
-          res.redirect(`${client_URL}/payment-fail/${req.params.tranId}`);
-        }
-      });
-    });
-
-    // ------------------Stripe Payment--------------------
-
-    //Payment Intent
-    app.post("/create-payment-intent", async (req, res) => {
-      const { price } = req.body;
-      const amount = parseInt(price * 100);
-      console.log(amount);
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
-    });
-
-    app.get("/payments", async (req, res) => {
-      const result = await UserPaymentCollection.find().toArray();
-      res.send(result);
-    });
-    // pagination added in Premium User list
-    app.get("/payments/pagination", async (req, res) => {
-      const query = req.query;
-      const page = query.page;
-      console.log(page);
-      const pageNumber = parseInt(page);
-      const perPage = 4;
-      const skip = pageNumber * perPage;
-      const users = UserPaymentCollection.find().skip(skip).limit(perPage);
-      const result = await users.toArray();
-      const UsersCount = await UserPaymentCollection.countDocuments();
-      res.send({ result, UsersCount });
-    });
-
-    app.get("/payments", async (req, res) => {
-      const cursor = UserPaymentCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.post("/payments", async (req, res) => {
-      const payment = req.body;
-      const paymentResult = UserPaymentCollection.insertOne(payment);
-      res.send(paymentResult);
-    });
+   
+  
 // ---------------------------------payment end-----------------------------
     // premium user delete
     app.delete("/payments/PremiumUser/:id", async (req, res) => {
@@ -588,9 +568,9 @@ app.get("/", (req, res) => {
   res.send("HireMaster Server Running Successfully");
 });
 
-// app.listen(port, () => {
-//   console.log(`HireMaster Server Running at Port ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`HireMaster Server Running at Port ${port}`);
+});
 
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

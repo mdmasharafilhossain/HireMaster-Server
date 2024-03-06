@@ -10,6 +10,10 @@ const SSLCommerzPayment = require("sslcommerz-lts");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
+// multer for file upload
+const path = require("path");
+const fs = require("fs");
+const multer = require("multer");
 
 const client_URL = "http://localhost:5173";
 const server_URL = "http://localhost:5000";
@@ -35,14 +39,10 @@ app.use(
 );
 
 app.use(cookieParser());
-
 app.use(express.json({ extended: true, limit: "25mb" }));
 app.use(express.urlencoded({ extended: true, limit: "25mb" }));
 
-// multer for file upload
-const path = require("path");
-const fs = require("fs");
-const multer = require("multer");
+
 
 const uploadPath = path.join(__dirname, "resumes");
 if (!fs.existsSync(uploadPath)) {
@@ -317,11 +317,11 @@ async function run() {
 
     app.patch("/managerProfile", async (req, res) => {
       const updatedProfile = req.body;
-
+      console.log(updatedProfile);
       const existingProfile = await ManagersProfileCollection.findOne({
         email: updatedProfile.email,
       });
-
+      console.log(existingProfile);
       if (!existingProfile) {
         return res.status(404).json({
           message: "Profile not found",
@@ -333,12 +333,13 @@ async function run() {
         { $set: updatedProfile }
       );
 
-      if (result.modifiedCount === 0) {
-        return res.status(500).json({
-          message: "Failed to update profile",
-        });
-      }
-      res.status(200).json({ message: "Profile updated successfully" });
+      // if (result.modifiedCount === 0) {
+      //   return res.status(500).json({
+      //     message: "Failed to update profile",
+      //   });
+      // }
+      // res.status(200).json({ message: "Profile updated successfully" });
+      console.log(result);
       res.send(result);
     });
 
