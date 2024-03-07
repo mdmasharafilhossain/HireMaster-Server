@@ -11,8 +11,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { default: slugify } = require("slugify");
 const port = process.env.PORT || 5000;
 
-// const client_URL = "http://localhost:5173";
-// const server_URL = "http://localhost:5000";
+const client_URL = "http://localhost:5173";
+const server_URL = "http://localhost:5000";
 
 // Socket.io
 const http = require("http");
@@ -23,8 +23,8 @@ const io = require("socket.io")(server, {
   },
 });
 
-const client_URL = "https://hiremaster.netlify.app";
-const server_URL = "https://hire-master-server.vercel.app";
+// const client_URL = "https://hiremaster.netlify.app";
+// const server_URL = "https://hire-master-server.vercel.app";
 
 // middleware
 app.use(
@@ -101,7 +101,6 @@ async function run() {
       .db("HireMaster")
       .collection("Subscribers");
 
-    const jobCollection = client.db("HireMaster").collection("jobData");
 
     const appliedJobCollection = client
       .db("HireMaster")
@@ -222,11 +221,6 @@ async function run() {
     //   res.send(result);
     // });
 
-    app.post("/jobpost", async (req, res) => {
-      const job = req.body;
-      const result = await jobCollection.insertOne(job);
-      res.send(result);
-    });
     app.get("/userProfile/:email", async (req, res) => {
       const email = req.params.email;
       const query = {
@@ -306,11 +300,82 @@ async function run() {
     });
 
     // ---------------Jobs Section-------------------
-    app.post("/jobpost", async (req, res) => {
+    app.post("/staticjobpost", async (req, res) => {
       const job = req.body;
-      const result = await jobCollection.insertOne(job);
+      const result = await staticCollection.insertOne(job);
       res.send(result);
     });
+
+
+    app.delete("/staticjobpost/:id",async(req,res)=>{
+      const id=req.params.id
+      const query={_id: new ObjectId(id)}
+      const result=await staticCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
+    app.get("/staticjobpost", async (req, res) => {
+      const cursor = staticCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+  
+
+    app.get("/staticjobpost/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await staticCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.get("/staticjobpost/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { hiring_manager_email: email };
+      const result = await staticCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/filter/static-job-post", async (req, res) => {
+      const { job_title, job_time, salaryRange } = req.query;
+      // console.log("Query parameters:", req.query);
+      const filter = {};
+
+      if (job_title) {
+        filter.job_title = { $regex: new RegExp(job_title, "i") };
+      }
+      if (job_time && job_time.length > 0) {
+        filter.job_time = { $in: job_time };
+      }
+      if (salaryRange) {
+        const [minSalary, maxSalary] = salaryRange.split("-").map(Number);
+        filter.salary = { $gte: minSalary, $lte: maxSalary };
+      }
+      // console.log("Applied filters:", filter);
+      const cursor = staticCollection.find(filter);
+      const result = await cursor.toArray();
+      if (result.length === 0) {
+        res.status(200).json({
+          message:
+            "No jobs found matching your criteria. Please try with different criteria.",
+        });
+      } else {
+        res.send(result);
+      }
+    });
+
+
+
+
+
+
+
+
+
 
     //----------------------Applied Jobs--------------------
     app.post("/users-appliedjobs", async (req, res) => {
@@ -389,66 +454,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/jobpost", async (req, res) => {
-      const cursor = jobCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    // app.get("/staticjobpost", async (req, res) => {
-    //   const cursor = staticCollection.find();
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
-    app.get("/staticjobpost", async (req, res) => {
-      const cursor = staticCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-    app.get("/staticjobpost/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = {
-        _id: new ObjectId(id),
-      };
-      const result = await staticCollection.findOne(query);
-      res.send(result);
-    });
-
-    app.get("/staticjobpost/:email", async (req, res) => {
-      const email = req.params.email;
-      console.log(email);
-      const query = { hiring_manager_email: email };
-      const result = await staticCollection.find(query).toArray();
-      res.send(result);
-    });
-
-    app.get("/filter/static-job-post", async (req, res) => {
-      const { job_title, job_time, salaryRange } = req.query;
-      // console.log("Query parameters:", req.query);
-      const filter = {};
-
-      if (job_title) {
-        filter.job_title = { $regex: new RegExp(job_title, "i") };
-      }
-      if (job_time && job_time.length > 0) {
-        filter.job_time = { $in: job_time };
-      }
-      if (salaryRange) {
-        const [minSalary, maxSalary] = salaryRange.split("-").map(Number);
-        filter.salary = { $gte: minSalary, $lte: maxSalary };
-      }
-      // console.log("Applied filters:", filter);
-      const cursor = staticCollection.find(filter);
-      const result = await cursor.toArray();
-      if (result.length === 0) {
-        res.status(200).json({
-          message:
-            "No jobs found matching your criteria. Please try with different criteria.",
-        });
-      } else {
-        res.send(result);
-      }
-    });
+   
     // --------------User Profile------------------
 
     app.patch("/UsersProfile/education/:id", async (req, res) => {
@@ -1359,8 +1365,7 @@ async function run() {
       const result = await UserPaymentCollection.deleteOne(query);
       res.send(result);
     });
-
-    // user report section
+ // user report section
     app.post("/userreport", async (req, res) => {
       const report = req.body;
       const result = await userReportCollection.insertOne(report);
@@ -1385,6 +1390,38 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+
+    app.delete("/premiumusercourse/:id",async(req,res)=>{
+      const id=req.params.id
+      const query={_id: new ObjectId(id)}
+      const result=await premiumUserCourseCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    app.patch('/premiumusercourse/update/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          courseName: item. courseName,
+          instructor:item.instructor ,
+          duration:item.duration ,
+          topics:item.topics ,
+          level:item.level,
+          price:item.price,
+          shortDescription:item.shortDescription,
+          description:item.description,
+        dailyBreakdown:item.dailyBreakdown ,
+        }
+      }
+    
+      const result = await premiumUserCourseCollection.updateOne(filter, updatedDoc)
+      res.send(result);
+    })
+    
+
+
 
     //
     // cloudinary
