@@ -331,28 +331,21 @@ async function run() {
 
     app.patch("/managerProfile", async (req, res) => {
       const updatedProfile = req.body;
-
+      console.log(updatedProfile);
       const existingProfile = await ManagersProfileCollection.findOne({
         email: updatedProfile.email,
       });
-
+      console.log(existingProfile);
       if (!existingProfile) {
         return res.status(404).json({
           message: "Profile not found",
         });
       }
-
       const result = await ManagersProfileCollection.updateOne(
         { email: updatedProfile.email },
         { $set: updatedProfile }
       );
-
-      if (result.modifiedCount === 0) {
-        return res.status(500).json({
-          message: "Failed to update profile",
-        });
-      }
-      res.status(200).json({ message: "Profile updated successfully" });
+      console.log(result);
       res.send(result);
     });
 
